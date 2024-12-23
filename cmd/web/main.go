@@ -26,11 +26,16 @@ func characterCreate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Display a form for creating a new snippet..."))
 }
 
+func characterCreatePost(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Save a new character..."))
+}
+
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/{$}", home)
-	mux.HandleFunc("/character/view/{id}", characterView)
-	mux.HandleFunc("/character/create", characterCreate)
+	mux.HandleFunc("GET /{$}", home)
+	mux.HandleFunc("GET /character/view/{id}", characterView)
+	mux.HandleFunc("GET /character/create", characterCreate)
+	mux.HandleFunc("POST /character/create", characterCreatePost)
 
 	log.Print("Starting server on :4000")
 
