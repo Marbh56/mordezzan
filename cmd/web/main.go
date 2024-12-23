@@ -1,33 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 )
-
-func home(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello from Mordezzan!"))
-}
-
-func characterView(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	fmt.Fprintf(w, "Display a specific character with ID %d...", id)
-}
-
-func characterCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display a form for creating a new snippet..."))
-}
-
-func characterCreatePost(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Save a new character..."))
-}
 
 func main() {
 	mux := http.NewServeMux()
