@@ -17,9 +17,7 @@ func characterView(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
-	msg := fmt.Sprintf("Display a specific snippet with ID %d...", id)
-	w.Write([]byte(msg))
+	fmt.Fprintf(w, "Display a specific character with ID %d...", id)
 }
 
 func characterCreate(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +25,7 @@ func characterCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func characterCreatePost(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("Save a new character..."))
 }
 
