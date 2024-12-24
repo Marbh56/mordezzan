@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
+	"encoding/json"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -28,13 +29,31 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *application) characterView(w http.ResponseWriter, r *http.Request) {
+func (app *application) characterViewById(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	fmt.Fprintf(w, "Display a specific character with ID %d...", id)
+	char, err := app.queries.ViewCharacter(r.Context(), int32(id))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.NotFound(w, r)
+			return
+		}
+		app.serverError(w, r, err)
+		return
+	}
+
+	data, err := json.MarshalIndent(char, "", "   ")
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+
 }
 
 func (app *application) characterCreate(w http.ResponseWriter, r *http.Request) {

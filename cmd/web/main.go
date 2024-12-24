@@ -8,12 +8,14 @@ import (
 	"os"
 
 	_ "github.com/lib/pq"
+	"github.com/marbh56/mordezzan/internal/database"
 
 	"github.com/joho/godotenv"
 )
 
 type application struct {
-	logger *slog.Logger
+	logger  *slog.Logger
+	queries *database.Queries
 }
 
 func main() {
@@ -43,8 +45,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	queries := database.New(db)
+
 	app := &application{
-		logger: logger,
+		logger:  logger,
+		queries: queries,
 	}
 
 	logger.Info("starting server", "addr", *addr)
