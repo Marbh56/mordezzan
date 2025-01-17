@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/marbh56/mordezzan/internal/database"
+	"github.com/marbh56/mordezzan/internal/server"
 )
 
 func main() {
@@ -17,10 +18,8 @@ func main() {
 	defer db.Close()
 	log.Println("Successfully connected to database!")
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello this will be a character manager!")
-	})
+	server := server.NewServer(db)
 
 	fmt.Println("Server starting on :8080...")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", server.Routes())
 }

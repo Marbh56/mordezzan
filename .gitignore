@@ -29,3 +29,6 @@ todo.md
 
 #data base files
 *.db
+
+#repomix
+repomix-output.txt
