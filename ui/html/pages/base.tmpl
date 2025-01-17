@@ -1,0 +1,19 @@
+{{define "base"}}
+<!doctype html>
+<html lang='en'>
+    <head>
+        <meta charset='utf-8'>
+        <title>{{template "title" .}} - Your Site</title>
+        <!-- We'll add more head elements later -->
+    </head>
+    <body>
+        <header>
+            <h1>Your Site</h1>
+        </header>
+        <main>
+            {{template "main" .}}
+        </main>
+        <footer>Powered by Go</footer>
+    </body>
+</html>
+{{end}}
