@@ -30,5 +30,6 @@ todo.md
 #data base files
 *.db
 
-#repomix
+#misc
 repomix-output.txt
+.DS_Store
