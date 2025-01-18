@@ -1,0 +1,53 @@
+{{define "title"}}Register - Mordezzan{{end}}
+
+{{define "content"}}
+<div class="register-container">
+    <h2>Create an Account</h2>
+
+    <form action="/register" method="POST">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                required
+                minlength="3"
+                maxlength="30"
+            />
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                minlength="8"
+            />
+        </div>
+
+        <div class="form-group">
+            <label for="confirm-password">Confirm Password:</label>
+            <input
+                type="password"
+                id="confirm-password"
+                name="confirm-password"
+                required
+            />
+        </div>
+
+        <button type="submit">Create Account</button>
+    </form>
+
+    <p class="login-link">
+        Already have an account? <a href="/login">Log in here</a>
+    </p>
+</div>
+{{end}}
