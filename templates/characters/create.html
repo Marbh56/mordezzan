@@ -1,0 +1,122 @@
+{{define "title"}}Create New Character - Mordezzan{{end}} {{define "content"}}
+<div class="create-character">
+    <h1>Create New Character</h1>
+
+    {{if .FlashMessage}}
+    <div class="flash-message">{{.FlashMessage}}</div>
+    {{end}}
+
+    <form action="/characters/create" method="POST" class="character-form">
+        <div class="form-section">
+            <h2>Basic Information</h2>
+            <div class="form-group">
+                <label for="name">Character Name:</label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    minlength="2"
+                    maxlength="50"
+                />
+            </div>
+
+            <div class="form-group">
+                <label for="max_hp">Maximum HP:</label>
+                <input
+                    type="number"
+                    id="max_hp"
+                    name="max_hp"
+                    required
+                    min="1"
+                    max="999"
+                />
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Ability Scores</h2>
+            <div class="ability-scores-grid">
+                <div class="form-group">
+                    <label for="strength">Strength:</label>
+                    <input
+                        type="number"
+                        id="strength"
+                        name="strength"
+                        required
+                        min="3"
+                        max="18"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="dexterity">Dexterity:</label>
+                    <input
+                        type="number"
+                        id="dexterity"
+                        name="dexterity"
+                        required
+                        min="3"
+                        max="18"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="constitution">Constitution:</label>
+                    <input
+                        type="number"
+                        id="constitution"
+                        name="constitution"
+                        required
+                        min="3"
+                        max="18"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="intelligence">Intelligence:</label>
+                    <input
+                        type="number"
+                        id="intelligence"
+                        name="intelligence"
+                        required
+                        min="3"
+                        max="18"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="wisdom">Wisdom:</label>
+                    <input
+                        type="number"
+                        id="wisdom"
+                        name="wisdom"
+                        required
+                        min="3"
+                        max="18"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="charisma">Charisma:</label>
+                    <input
+                        type="number"
+                        id="charisma"
+                        name="charisma"
+                        required
+                        min="3"
+                        max="18"
+                    />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="create-button">
+                Create Character
+            </button>
+            <a href="/characters" class="cancel-button">Cancel</a>
+        </div>
+    </form>
+</div>
+{{end}}

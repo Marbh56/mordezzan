@@ -1,0 +1,50 @@
+{{define "title"}}Welcome to Mordezzan{{end}} {{define "content"}}
+<div class="home-container">
+    {{if .IsAuthenticated}}
+    <div class="welcome-back">
+        <h1>Welcome back, {{.Username}}!</h1>
+        <div class="quick-actions">
+            <h2>Quick Actions</h2>
+            <div class="action-grid">
+                <a href="/characters" class="action-card">
+                    <h3>My Characters</h3>
+                    <p>View and manage your character sheets</p>
+                </a>
+                <a href="/campaigns" class="action-card">
+                    <h3>Campaigns</h3>
+                    <p>Join or create a new campaign</p>
+                </a>
+            </div>
+        </div>
+    </div>
+    {{else}}
+    <div class="hero-section">
+        <h1>Welcome to Mordezzan</h1>
+        <p class="hero-text">
+            Your digital companion for tabletop roleplaying adventures
+        </p>
+        <div class="cta-buttons">
+            <a href="/register" class="button primary">Create Account</a>
+            <a href="/login" class="button secondary">Login</a>
+        </div>
+    </div>
+    <div class="features">
+        <h2>Features</h2>
+        <div class="feature-grid">
+            <div class="feature">
+                <h3>Character Management</h3>
+                <p>Create and manage your character sheets digitally</p>
+            </div>
+            <div class="feature">
+                <h3>Campaign Tools</h3>
+                <p>Organize your campaigns and keep track of your adventures</p>
+            </div>
+            <div class="feature">
+                <h3>Rule Reference</h3>
+                <p>Quick access to game rules and mechanics</p>
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}

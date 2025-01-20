@@ -1,0 +1,132 @@
+{{define "title"}}{{.Character.Name}} - Character Details - Mordezzan{{end}}
+{{define "content"}}
+<div class="character-detail">
+    <div class="header-section">
+        <h1>{{.Character.Name}}</h1>
+        <div class="character-actions">
+            <a href="/characters/edit?id={{.Character.ID}}" class="edit-button"
+                >Edit Character</a
+            >
+            <form
+                action="/characters/delete"
+                method="POST"
+                style="display: inline"
+            >
+                <input
+                    type="hidden"
+                    name="character_id"
+                    value="{{.Character.ID}}"
+                />
+                <button
+                    type="submit"
+                    class="delete-button"
+                    onclick="return confirm('Are you sure you want to delete this character?')"
+                >
+                    Delete Character
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {{if .FlashMessage}}
+    <div class="flash-message">{{.FlashMessage}}</div>
+    {{end}}
+
+    <div class="character-stats-container">
+        <div class="stat-section hp-section">
+            <h2>Hit Points</h2>
+            <div class="hp-display">
+                <span class="current-hp">{{.Character.CurrentHp}}</span>
+                <span class="hp-separator">/</span>
+                <span class="max-hp">{{.Character.MaxHp}}</span>
+            </div>
+            <form action="/characters/update-hp" method="POST" class="hp-form">
+                <input
+                    type="hidden"
+                    name="character_id"
+                    value="{{.Character.ID}}"
+                />
+                <div class="hp-controls">
+                    <input
+                        type="number"
+                        name="hp_change"
+                        id="hp_change"
+                        placeholder="Amount"
+                    />
+                    <button
+                        type="submit"
+                        name="action"
+                        value="heal"
+                        class="heal-button"
+                    >
+                        Heal
+                    </button>
+                    <button
+                        type="submit"
+                        name="action"
+                        value="damage"
+                        class="damage-button"
+                    >
+                        Damage
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="stat-section ability-scores-section">
+            <h2>Ability Scores</h2>
+            <div class="ability-scores-grid">
+                <div class="ability-score">
+                    <h3>Strength</h3>
+                    <div class="score-value">{{.Character.Strength}}</div>
+                    <div class="score-modifier">
+                        {{template "abilityModifier" .Character.Strength}}
+                    </div>
+                </div>
+
+                <div class="ability-score">
+                    <h3>Dexterity</h3>
+                    <div class="score-value">{{.Character.Dexterity}}</div>
+                    <div class="score-modifier">
+                        {{template "abilityModifier" .Character.Dexterity}}
+                    </div>
+                </div>
+
+                <div class="ability-score">
+                    <h3>Constitution</h3>
+                    <div class="score-value">{{.Character.Constitution}}</div>
+                    <div class="score-modifier">
+                        {{template "abilityModifier" .Character.Constitution}}
+                    </div>
+                </div>
+
+                <div class="ability-score">
+                    <h3>Intelligence</h3>
+                    <div class="score-value">{{.Character.Intelligence}}</div>
+                    <div class="score-modifier">
+                        {{template "abilityModifier" .Character.Intelligence}}
+                    </div>
+                </div>
+
+                <div class="ability-score">
+                    <h3>Wisdom</h3>
+                    <div class="score-value">{{.Character.Wisdom}}</div>
+                    <div class="score-modifier">
+                        {{template "abilityModifier" .Character.Wisdom}}
+                    </div>
+                </div>
+
+                <div class="ability-score">
+                    <h3>Charisma</h3>
+                    <div class="score-value">{{.Character.Charisma}}</div>
+                    <div class="score-modifier">
+                        {{template "abilityModifier" .Character.Charisma}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{define "abilityModifier"}} {{$modifier := div (sub . 10) 2}} {{if gte
+$modifier 0}}+{{end}}{{$modifier}} {{end}} {{end}}

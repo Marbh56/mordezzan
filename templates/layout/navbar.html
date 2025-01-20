@@ -1,0 +1,18 @@
+{{define "navbar"}}
+<nav>
+    <div class="nav-brand">
+        <a href="/">Mordezzan</a>
+    </div>
+    <div class="nav-links">
+        {{if .IsAuthenticated}}
+        <a href="/characters">My Characters</a>
+        <form action="/logout" method="POST" style="display: inline">
+            <button type="submit">Logout</button>
+        </form>
+        {{else}}
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+        {{end}}
+    </div>
+</nav>
+{{end}}

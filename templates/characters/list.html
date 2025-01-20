@@ -1,0 +1,64 @@
+{{define "title"}}My Characters - Mordezzan{{end}} {{define "content"}}
+<div class="character-list">
+    <div class="header-section">
+        <h1>My Characters</h1>
+        <a href="/characters/create" class="create-button"
+            >Create New Character</a
+        >
+    </div>
+
+    {{if .FlashMessage}}
+    <div class="flash-message">{{.FlashMessage}}</div>
+    {{end}} {{if .Characters}}
+    <div class="character-grid">
+        {{range .Characters}}
+        <div class="character-card">
+            <h2 class="character-name">{{.Name}}</h2>
+            <div class="character-stats">
+                <div class="hp-stat">
+                    <span class="label">HP:</span>
+                    <span class="value">{{.CurrentHp}}/{{.MaxHp}}</span>
+                </div>
+                <div class="ability-scores">
+                    <div class="ability-score">
+                        <span class="label">STR</span>
+                        <span class="value">{{.Strength}}</span>
+                    </div>
+                    <div class="ability-score">
+                        <span class="label">DEX</span>
+                        <span class="value">{{.Dexterity}}</span>
+                    </div>
+                    <div class="ability-score">
+                        <span class="label">CON</span>
+                        <span class="value">{{.Constitution}}</span>
+                    </div>
+                    <div class="ability-score">
+                        <span class="label">INT</span>
+                        <span class="value">{{.Intelligence}}</span>
+                    </div>
+                    <div class="ability-score">
+                        <span class="label">WIS</span>
+                        <span class="value">{{.Wisdom}}</span>
+                    </div>
+                    <div class="ability-score">
+                        <span class="label">CHA</span>
+                        <span class="value">{{.Charisma}}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="character-actions">
+                <a href="/characters/detail?id={{.ID}}" class="view-button"
+                    >View Details</a
+                >
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <p>You haven't created any characters yet.</p>
+        <p>Click the "Create New Character" button to get started!</p>
+    </div>
+    {{end}}
+</div>
+{{end}}
