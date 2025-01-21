@@ -10,6 +10,68 @@ import (
 	"github.com/marbh56/mordezzan/internal/db"
 )
 
+func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get character ID from URL query parameter
+	characterIDStr := r.URL.Query().Get("id")
+	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get character from database
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		log.Printf("Error fetching character: %v", err)
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Create view model with calculated modifiers
+	viewModel := NewCharacterViewModel(character)
+
+	tmpl, err := template.ParseFiles(
+		"templates/layout/base.html",
+		"templates/characters/detail.html",
+	)
+	if err != nil {
+		log.Printf("Template parsing error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		IsAuthenticated bool
+		Username        string
+		Character       CharacterViewModel
+		FlashMessage    string
+		CurrentYear     int
+	}{
+		IsAuthenticated: true,
+		Username:        user.Username,
+		Character:       viewModel,
+		FlashMessage:    r.URL.Query().Get("message"),
+		CurrentYear:     time.Now().Year(),
+	}
+
+	err = tmpl.ExecuteTemplate(w, "base.html", data)
+	if err != nil {
+		log.Printf("Template execution error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
 	// Get user from context (set by AuthMiddleware)
 	user, ok := GetUserFromContext(r.Context())
@@ -123,9 +185,24 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	params := db.CreateCharacterParams{
 		UserID: user.UserID,
 		Name:   r.Form.Get("name"),
+		Class:  r.Form.Get("class"),
 	}
 
-	// Parse integer values
+	// Validate class
+	if params.Class != "Fighter" {
+		http.Redirect(w, r, "/characters/create?message=Invalid character class", http.StatusSeeOther)
+		return
+	}
+
+	// Parse level
+	level, err := strconv.Atoi(r.Form.Get("level"))
+	if err != nil || level < 1 || level > 20 {
+		http.Redirect(w, r, "/characters/create?message=Invalid level value", http.StatusSeeOther)
+		return
+	}
+	params.Level = int64(level)
+
+	// Parse maxHP
 	maxHP, err := strconv.Atoi(r.Form.Get("max_hp"))
 	if err != nil {
 		http.Redirect(w, r, "/characters/create?message=Invalid HP value", http.StatusSeeOther)
@@ -149,7 +226,7 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	params.Wisdom = int64(wis)
 	params.Charisma = int64(cha)
 
-	// Validate ability scores (should be between 3 and 18 for typical D&D rules)
+	// Validate ability scores (should be between 3 and 18)
 	abilities := []int64{params.Strength, params.Dexterity, params.Constitution,
 		params.Intelligence, params.Wisdom, params.Charisma}
 	for _, score := range abilities {
@@ -170,63 +247,4 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	}
 
 	http.Redirect(w, r, "/characters?message=Character created successfully", http.StatusSeeOther)
-}
-
-func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
-	user, ok := GetUserFromContext(r.Context())
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Get character ID from URL query parameter
-	characterIDStr := r.URL.Query().Get("id")
-	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid character ID", http.StatusBadRequest)
-		return
-	}
-
-	// Get character from database
-	queries := db.New(s.db)
-	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
-		ID:     characterID,
-		UserID: user.UserID,
-	})
-	if err != nil {
-		log.Printf("Error fetching character: %v", err)
-		http.Error(w, "Character not found", http.StatusNotFound)
-		return
-	}
-
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/characters/detail.html",
-	)
-	if err != nil {
-		log.Printf("Template parsing error: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		IsAuthenticated bool
-		Username        string
-		Character       db.Character
-		FlashMessage    string
-		CurrentYear     int
-	}{
-		IsAuthenticated: true,
-		Username:        user.Username,
-		Character:       character,
-		FlashMessage:    r.URL.Query().Get("message"),
-		CurrentYear:     time.Now().Year(),
-	}
-
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
 }

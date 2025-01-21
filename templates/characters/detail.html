@@ -40,93 +40,141 @@
                 <span class="hp-separator">/</span>
                 <span class="max-hp">{{.Character.MaxHp}}</span>
             </div>
-            <form action="/characters/update-hp" method="POST" class="hp-form">
-                <input
-                    type="hidden"
-                    name="character_id"
-                    value="{{.Character.ID}}"
-                />
-                <div class="hp-controls">
-                    <input
-                        type="number"
-                        name="hp_change"
-                        id="hp_change"
-                        placeholder="Amount"
-                    />
-                    <button
-                        type="submit"
-                        name="action"
-                        value="heal"
-                        class="heal-button"
-                    >
-                        Heal
-                    </button>
-                    <button
-                        type="submit"
-                        name="action"
-                        value="damage"
-                        class="damage-button"
-                    >
-                        Damage
-                    </button>
-                </div>
-            </form>
         </div>
 
         <div class="stat-section ability-scores-section">
             <h2>Ability Scores</h2>
             <div class="ability-scores-grid">
-                <div class="ability-score">
+                <!-- Strength Section -->
+                <div class="ability-score-detailed">
                     <h3>Strength</h3>
                     <div class="score-value">{{.Character.Strength}}</div>
-                    <div class="score-modifier">
-                        {{template "abilityModifier" .Character.Strength}}
+                    <div class="modifier-details">
+                        <div class="modifier-row">
+                            <span class="label">Attack (Melee):</span>
+                            <span class="value"
+                                >{{if ge .Character.StrengthModifiers.AttackMod
+                                0}}+{{end}}{{.Character.StrengthModifiers.AttackMod}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Damage:</span>
+                            <span class="value"
+                                >{{if ge .Character.StrengthModifiers.DamageMod
+                                0}}+{{end}}{{.Character.StrengthModifiers.DamageMod}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Test of Strength:</span>
+                            <span class="value"
+                                >{{.Character.StrengthModifiers.TestOfStrength}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Extraordinary Feat:</span>
+                            <span class="value"
+                                >{{.Character.StrengthModifiers.ExtraordinaryFeat}}%</span
+                            >
+                        </div>
                     </div>
                 </div>
 
-                <div class="ability-score">
+                <!-- Dexterity Section -->
+                <div class="ability-score-detailed">
                     <h3>Dexterity</h3>
                     <div class="score-value">{{.Character.Dexterity}}</div>
-                    <div class="score-modifier">
-                        {{template "abilityModifier" .Character.Dexterity}}
+                    <div class="modifier-details">
+                        <div class="modifier-row">
+                            <span class="label">Attack (Missile):</span>
+                            <span class="value"
+                                >{{if ge .Character.DexterityModifiers.AttackMod
+                                0}}+{{end}}{{.Character.DexterityModifiers.AttackMod}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Defense:</span>
+                            <span class="value"
+                                >{{if ge
+                                .Character.DexterityModifiers.DefenseAdj
+                                0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Test of Dexterity:</span>
+                            <span class="value"
+                                >{{.Character.DexterityModifiers.TestOfDexterity}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Extraordinary Feat:</span>
+                            <span class="value"
+                                >{{.Character.DexterityModifiers.ExtraordinaryFeat}}%</span
+                            >
+                        </div>
                     </div>
                 </div>
 
-                <div class="ability-score">
+                <!-- Constitution Section -->
+                <div class="ability-score-detailed">
                     <h3>Constitution</h3>
                     <div class="score-value">{{.Character.Constitution}}</div>
-                    <div class="score-modifier">
-                        {{template "abilityModifier" .Character.Constitution}}
+                    <div class="modifier-details">
+                        <div class="modifier-row">
+                            <span class="label">Hit Points/Level:</span>
+                            <span class="value"
+                                >{{if ge
+                                .Character.ConstitutionModifiers.HitPointMod
+                                0}}+{{end}}{{.Character.ConstitutionModifiers.HitPointMod}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Poison/Radiation:</span>
+                            <span class="value"
+                                >{{if ge
+                                .Character.ConstitutionModifiers.PoisonRadMod
+                                0}}+{{end}}{{.Character.ConstitutionModifiers.PoisonRadMod}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Trauma Survival:</span>
+                            <span class="value"
+                                >{{.Character.ConstitutionModifiers.TraumaSurvival}}%</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Test of Constitution:</span>
+                            <span class="value"
+                                >{{.Character.ConstitutionModifiers.TestOfCon}}</span
+                            >
+                        </div>
+                        <div class="modifier-row">
+                            <span class="label">Extraordinary Feat:</span>
+                            <span class="value"
+                                >{{.Character.ConstitutionModifiers.ExtraordinaryFeat}}%</span
+                            >
+                        </div>
                     </div>
                 </div>
 
+                <!-- Intelligence Section -->
                 <div class="ability-score">
                     <h3>Intelligence</h3>
                     <div class="score-value">{{.Character.Intelligence}}</div>
-                    <div class="score-modifier">
-                        {{template "abilityModifier" .Character.Intelligence}}
-                    </div>
                 </div>
 
+                <!-- Wisdom Section -->
                 <div class="ability-score">
                     <h3>Wisdom</h3>
                     <div class="score-value">{{.Character.Wisdom}}</div>
-                    <div class="score-modifier">
-                        {{template "abilityModifier" .Character.Wisdom}}
-                    </div>
                 </div>
 
+                <!-- Charisma Section -->
                 <div class="ability-score">
                     <h3>Charisma</h3>
                     <div class="score-value">{{.Character.Charisma}}</div>
-                    <div class="score-modifier">
-                        {{template "abilityModifier" .Character.Charisma}}
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-{{define "abilityModifier"}} {{$modifier := div (sub . 10) 2}} {{if gte
-$modifier 0}}+{{end}}{{$modifier}} {{end}} {{end}}
+{{end}}

@@ -1,8 +1,11 @@
+-- sql/migrations/002_Create_Characters.sql
 -- +goose Up
 CREATE TABLE characters (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
+    class TEXT NOT NULL DEFAULT 'Fighter',
+    level INTEGER NOT NULL DEFAULT 1,
     max_hp INTEGER NOT NULL,
     current_hp INTEGER NOT NULL,
     strength INTEGER NOT NULL,

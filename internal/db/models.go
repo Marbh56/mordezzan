@@ -12,6 +12,8 @@ type Character struct {
 	ID           int64     `json:"id"`
 	UserID       int64     `json:"user_id"`
 	Name         string    `json:"name"`
+	Class        string    `json:"class"`
+	Level        int64     `json:"level"`
 	MaxHp        int64     `json:"max_hp"`
 	CurrentHp    int64     `json:"current_hp"`
 	Strength     int64     `json:"strength"`

@@ -83,10 +83,12 @@ func (s *Server) handleRegistrerSubmission(w http.ResponseWriter, r *http.Reques
 	queries := db.New(s.db)
 
 	_, err := queries.GetUserByUsername(context.Background(), username)
-	if err != nil {
+	if err == nil {
+		// User found, so username is taken
 		http.Redirect(w, r, "/register?error=Username already exists", http.StatusSeeOther)
 		return
 	} else if err != sql.ErrNoRows {
+		// Some other database error occurred
 		log.Printf("Error checking username: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

@@ -14,6 +14,8 @@ INSERT INTO
     characters (
         user_id,
         name,
+        class,
+        level,
         max_hp,
         current_hp,
         strength,
@@ -24,12 +26,14 @@ INSERT INTO
         charisma
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, user_id, name, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
 `
 
 type CreateCharacterParams struct {
 	UserID       int64  `json:"user_id"`
 	Name         string `json:"name"`
+	Class        string `json:"class"`
+	Level        int64  `json:"level"`
 	MaxHp        int64  `json:"max_hp"`
 	CurrentHp    int64  `json:"current_hp"`
 	Strength     int64  `json:"strength"`
@@ -40,10 +44,13 @@ type CreateCharacterParams struct {
 	Charisma     int64  `json:"charisma"`
 }
 
+// sql/queries/characters.sql
 func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams) (Character, error) {
 	row := q.db.QueryRowContext(ctx, createCharacter,
 		arg.UserID,
 		arg.Name,
+		arg.Class,
+		arg.Level,
 		arg.MaxHp,
 		arg.CurrentHp,
 		arg.Strength,
@@ -58,6 +65,8 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.ID,
 		&i.UserID,
 		&i.Name,
+		&i.Class,
+		&i.Level,
 		&i.MaxHp,
 		&i.CurrentHp,
 		&i.Strength,
@@ -91,7 +100,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacter = `-- name: GetCharacter :one
 SELECT
-    id, user_id, name, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
 FROM
     characters
 WHERE
@@ -113,6 +122,8 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.ID,
 		&i.UserID,
 		&i.Name,
+		&i.Class,
+		&i.Level,
 		&i.MaxHp,
 		&i.CurrentHp,
 		&i.Strength,
@@ -129,7 +140,7 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 
 const listCharactersByUser = `-- name: ListCharactersByUser :many
 SELECT
-    id, user_id, name, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
 FROM
     characters
 WHERE
@@ -151,6 +162,8 @@ func (q *Queries) ListCharactersByUser(ctx context.Context, userID int64) ([]Cha
 			&i.ID,
 			&i.UserID,
 			&i.Name,
+			&i.Class,
+			&i.Level,
 			&i.MaxHp,
 			&i.CurrentHp,
 			&i.Strength,
@@ -179,6 +192,8 @@ const updateCharacter = `-- name: UpdateCharacter :one
 UPDATE characters
 SET
     name = ?,
+    class = ?,
+    level = ?,
     max_hp = ?,
     current_hp = ?,
     strength = ?,
@@ -190,11 +205,13 @@ SET
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?
-    AND user_id = ? RETURNING id, user_id, name, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    AND user_id = ? RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
 `
 
 type UpdateCharacterParams struct {
 	Name         string `json:"name"`
+	Class        string `json:"class"`
+	Level        int64  `json:"level"`
 	MaxHp        int64  `json:"max_hp"`
 	CurrentHp    int64  `json:"current_hp"`
 	Strength     int64  `json:"strength"`
@@ -210,6 +227,8 @@ type UpdateCharacterParams struct {
 func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams) (Character, error) {
 	row := q.db.QueryRowContext(ctx, updateCharacter,
 		arg.Name,
+		arg.Class,
+		arg.Level,
 		arg.MaxHp,
 		arg.CurrentHp,
 		arg.Strength,
@@ -226,6 +245,8 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.ID,
 		&i.UserID,
 		&i.Name,
+		&i.Class,
+		&i.Level,
 		&i.MaxHp,
 		&i.CurrentHp,
 		&i.Strength,

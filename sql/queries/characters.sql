@@ -1,8 +1,11 @@
+-- sql/queries/characters.sql
 -- name: CreateCharacter :one
 INSERT INTO
     characters (
         user_id,
         name,
+        class,
+        level,
         max_hp,
         current_hp,
         strength,
@@ -13,7 +16,7 @@ INSERT INTO
         charisma
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
 
 -- name: GetCharacter :one
 SELECT
@@ -40,6 +43,8 @@ ORDER BY
 UPDATE characters
 SET
     name = ?,
+    class = ?,
+    level = ?,
     max_hp = ?,
     current_hp = ?,
     strength = ?,
