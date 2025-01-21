@@ -74,3 +74,60 @@ func CalculateConstitutionModifiers(constitution int64) ConstitutionModifiers {
 
 	return mods
 }
+
+func CalculateTotalHP(baseHP, level, constitution int64) (int64, error) {
+	// Validate inputs
+	if baseHP <= 0 {
+		return 0, ErrInvalidBaseHP
+	}
+
+	if level < 1 || level > 20 {
+		return 0, ErrInvalidLevel
+	}
+
+	if constitution < 3 || constitution > 18 {
+		return 0, ErrInvalidAbilityScore
+	}
+
+	// Get constitution modifiers
+	conMods := CalculateConstitutionModifiers(constitution)
+
+	// Calculate additional HP from constitution modifier
+	// The modifier applies to each level as per OGL rules
+	constitutionBonus := int64(conMods.HitPointMod) * level
+
+	// Total HP is base HP plus constitution bonus
+	totalHP := baseHP + constitutionBonus
+
+	// Ensure minimum HP of 1
+	if totalHP < 1 {
+		return 1, nil
+	}
+
+	return totalHP, nil
+}
+
+// Custom errors for HP calculation
+var (
+	ErrInvalidBaseHP       = error(invalidBaseHPError{})
+	ErrInvalidLevel        = error(invalidLevelError{})
+	ErrInvalidAbilityScore = error(invalidAbilityScoreError{})
+)
+
+type invalidBaseHPError struct{}
+
+func (e invalidBaseHPError) Error() string {
+	return "Base HP must be positive"
+}
+
+type invalidLevelError struct{}
+
+func (e invalidLevelError) Error() string {
+	return "Level must be between 1 and 20"
+}
+
+type invalidAbilityScoreError struct{}
+
+func (e invalidAbilityScoreError) Error() string {
+	return "Ability score must be between 3 and 18"
+}
