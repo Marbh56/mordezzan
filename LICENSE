@@ -13,7 +13,7 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
 This license does not apply to the compendium content listed in this software's
-"rules" directory or any sql files that contain OGL licensed content such as "005_Add_Weapons.sql". See the LICENSE.OGL for licensing information for the compendium
+"rules" directory or any sql files that contain OGL licensed content such as "005_Add_Weapons.sql" "006_Add_Melee_Properties.sql" "007_Add_Armour.sql". See the LICENSE.OGL for licensing information for the compendium
 packs.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
