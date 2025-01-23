@@ -36,8 +36,11 @@ func (s *Server) HandleAddInventoryItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Parse character ID from query parameter
 	characterIDStr := r.URL.Query().Get("character_id")
+	if characterIDStr == "" {
+		characterIDStr = r.FormValue("character_id") // Also check POST form data
+	}
+
 	if characterIDStr == "" {
 		http.Error(w, "Character ID is required", http.StatusBadRequest)
 		return
@@ -49,7 +52,6 @@ func (s *Server) HandleAddInventoryItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Verify character belongs to user
 	queries := db.New(s.db)
 	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
 		ID:     characterID,

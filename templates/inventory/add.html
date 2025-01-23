@@ -4,7 +4,7 @@
 
     {{if .FlashMessage}}
     <div class="flash-message">{{.FlashMessage}}</div>
-    {{end}} {{/* Step 1: Select item type */}} {{if not .SelectedType}}
+    {{end}} {{if not .SelectedType}}
     <form action="/characters/inventory/add" method="GET">
         <input type="hidden" name="character_id" value="{{.CharacterID}}" />
         <div class="form-group">
@@ -28,8 +28,9 @@
         </div>
     </form>
 
-    {{else}} {{/* Step 2: Select specific item and details */}}
+    {{else}}
     <form action="/characters/inventory/add" method="POST">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}" />
         <input type="hidden" name="item_type" value="{{.SelectedType}}" />
 
         <div class="form-group">
