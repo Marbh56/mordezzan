@@ -1,0 +1,83 @@
+{{define "title"}}Edit {{.Character.Name}} - Mordezzan{{end}}
+
+{{define "content"}}
+<div class="edit-character">
+    <h1>Edit Character: {{.Character.Name}}</h1>
+
+    {{if .FlashMessage}}
+    <div class="flash-message">{{.FlashMessage}}</div>
+    {{end}}
+
+    <form action="/characters/edit?id={{.Character.ID}}" method="POST" class="character-form">
+        <div class="form-section">
+            <h2>Basic Information</h2>
+            <div class="form-group">
+                <label for="name">Character Name:</label>
+                <input type="text" id="name" name="name" value="{{.Character.Name}}" required minlength="2" maxlength="50" />
+            </div>
+
+            <div class="form-group">
+                <label for="class">Character Class:</label>
+                <select id="class" name="class" required>
+                    <option value="Fighter" {{if eq .Character.Class "Fighter"}}selected{{end}}>Fighter</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="level">Level:</label>
+                <input type="number" id="level" name="level" value="{{.Character.Level}}" required min="1" max="20" />
+            </div>
+
+            <div class="form-group">
+                <label for="max_hp">Maximum HP:</label>
+                <input type="number" id="max_hp" name="max_hp" value="{{.Character.MaxHp}}" required min="1" />
+            </div>
+
+            <div class="form-group">
+                <label for="current_hp">Current HP:</label>
+                <input type="number" id="current_hp" name="current_hp" value="{{.Character.CurrentHp}}" required min="0" />
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2>Ability Scores</h2>
+            <div class="ability-scores-grid">
+                <div class="form-group">
+                    <label for="strength">Strength:</label>
+                    <input type="number" id="strength" name="strength" value="{{.Character.Strength}}" required min="3" max="18" />
+                </div>
+
+                <div class="form-group">
+                    <label for="dexterity">Dexterity:</label>
+                    <input type="number" id="dexterity" name="dexterity" value="{{.Character.Dexterity}}" required min="3" max="18" />
+                </div>
+
+                <div class="form-group">
+                    <label for="constitution">Constitution:</label>
+                    <input type="number" id="constitution" name="constitution" value="{{.Character.Constitution}}" required min="3" max="18" />
+                </div>
+
+                <div class="form-group">
+                    <label for="intelligence">Intelligence:</label>
+                    <input type="number" id="intelligence" name="intelligence" value="{{.Character.Intelligence}}" required min="3" max="18" />
+                </div>
+
+                <div class="form-group">
+                    <label for="wisdom">Wisdom:</label>
+                    <input type="number" id="wisdom" name="wisdom" value="{{.Character.Wisdom}}" required min="3" max="18" />
+                </div>
+
+                <div class="form-group">
+                    <label for="charisma">Charisma:</label>
+                    <input type="number" id="charisma" name="charisma" value="{{.Character.Charisma}}" required min="3" max="18" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="save-button">Save Changes</button>
+            <a href="/characters/detail?id={{.Character.ID}}" class="cancel-button">Cancel</a>
+        </div>
+    </form>
+</div>
+{{end}}

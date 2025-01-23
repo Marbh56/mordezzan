@@ -1,0 +1,87 @@
+{{define "title"}}Add Item to Inventory - Mordezzan{{end}} {{define "content"}}
+<div>
+    <h1>Add Item to Inventory</h1>
+
+    {{if .FlashMessage}}
+    <div>{{.FlashMessage}}</div>
+    {{end}} {{/* Step 1: Select item type */}} {{if not .SelectedType}}
+    <form action="/characters/{{.CharacterID}}/inventory/add" method="GET">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}" />
+        <div>
+            <label for="item_type">Select Item Type:</label>
+            <select name="type" id="item_type" required>
+                <option value="equipment">Equipment</option>
+                <option value="weapon">Weapon</option>
+                <option value="armor">Armor</option>
+                <option value="ammunition">Ammunition</option>
+                <option value="container">Container</option>
+                <option value="shield">Shield</option>
+                <option value="ranged_weapon">Ranged Weapon</option>
+            </select>
+        </div>
+        <button type="submit">Next</button>
+        <a href="/characters/detail?id={{.CharacterID}}">Cancel</a>
+    </form>
+
+    {{else}} {{/* Step 2: Select specific item and details */}}
+    <form action="/characters/{{.CharacterID}}/inventory/add" method="POST">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}" />
+        <input type="hidden" name="item_type" value="{{.SelectedType}}" />
+
+        <div>
+            <label for="item_id">Select Item:</label>
+            <select name="item_id" id="item_id" required>
+                {{range .Items}}
+                <option value="{{.ID}}">
+                    {{.Name}} ({{.Weight}} lbs - {{.CostGP}} gp)
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <div>
+            <label for="quantity">Quantity:</label>
+            <input
+                type="number"
+                name="quantity"
+                id="quantity"
+                value="1"
+                min="1"
+                required
+            />
+        </div>
+
+        {{if .Containers}}
+        <div>
+            <label for="container_id">Store in Container (optional):</label>
+            <select name="container_inventory_id" id="container_id">
+                <option value="">None</option>
+                {{range .Containers}}
+                <option value="{{.ID}}">{{.ItemName}}</option>
+                {{end}}
+            </select>
+        </div>
+        {{end}} {{if .ShowEquipmentSlots}}
+        <div>
+            <label for="equipment_slot">Equipment Slot (optional):</label>
+            <select name="equipment_slot_id" id="equipment_slot">
+                <option value="">None</option>
+                {{range .EquipmentSlots}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+        {{end}}
+
+        <div>
+            <label for="notes">Notes (optional):</label>
+            <textarea name="notes" id="notes"></textarea>
+        </div>
+
+        <button type="submit">Add Item</button>
+        <a href="/characters/{{.CharacterID}}/inventory/add">Back</a>
+        <a href="/characters/detail?id={{.CharacterID}}">Cancel</a>
+    </form>
+    {{end}}
+</div>
+{{end}}

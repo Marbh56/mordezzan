@@ -1,180 +1,221 @@
 {{define "title"}}{{.Character.Name}} - Character Details - Mordezzan{{end}}
 {{define "content"}}
-<div class="character-detail">
-    <div class="header-section">
-        <h1>{{.Character.Name}}</h1>
-        <div class="character-actions">
-            <a href="/characters/edit?id={{.Character.ID}}" class="edit-button"
-                >Edit Character</a
+<div>
+    <h1>{{.Character.Name}}</h1>
+
+    <!-- Character Actions -->
+    <div>
+        <a href="/characters/edit?id={{.Character.ID}}">Edit Character</a>
+        <form action="/characters/delete" method="POST" style="display: inline">
+            <input
+                type="hidden"
+                name="character_id"
+                value="{{.Character.ID}}"
+            />
+            <button
+                type="submit"
+                onclick="return confirm('Are you sure you want to delete this character?')"
             >
-            <form
-                action="/characters/delete"
-                method="POST"
-                style="display: inline"
-            >
-                <input
-                    type="hidden"
-                    name="character_id"
-                    value="{{.Character.ID}}"
-                />
-                <button
-                    type="submit"
-                    class="delete-button"
-                    onclick="return confirm('Are you sure you want to delete this character?')"
-                >
-                    Delete Character
-                </button>
-            </form>
-        </div>
+                Delete Character
+            </button>
+        </form>
     </div>
 
     {{if .FlashMessage}}
-    <div class="flash-message">{{.FlashMessage}}</div>
+    <div>{{.FlashMessage}}</div>
     {{end}}
 
-    <div class="character-stats-container">
-        <div class="stat-section hp-section">
-            <h2>Hit Points</h2>
-            <div class="hp-display">
-                <span class="current-hp">{{.Character.CurrentHp}}</span>
-                <span class="hp-separator">/</span>
-                <span class="max-hp">{{.Character.MaxHp}}</span>
-            </div>
+    <!-- Basic Stats -->
+    <div>
+        <h2>Hit Points</h2>
+        <div>{{.Character.CurrentHp}} / {{.Character.MaxHp}}</div>
+    </div>
+
+    <!-- Ability Scores -->
+    <div>
+        <h2>Ability Scores</h2>
+        <div>
+            <h3>Strength: {{.Character.Strength}}</h3>
+            <ul>
+                <li>
+                    Attack (Melee): {{if ge
+                    .Character.StrengthModifiers.AttackMod
+                    0}}+{{end}}{{.Character.StrengthModifiers.AttackMod}}
+                </li>
+                <li>
+                    Damage: {{if ge .Character.StrengthModifiers.DamageMod
+                    0}}+{{end}}{{.Character.StrengthModifiers.DamageMod}}
+                </li>
+                <li>
+                    Test of Strength:
+                    {{.Character.StrengthModifiers.TestOfStrength}}
+                </li>
+                <li>
+                    Extraordinary Feat:
+                    {{.Character.StrengthModifiers.ExtraordinaryFeat}}%
+                </li>
+            </ul>
+
+            <h3>Dexterity: {{.Character.Dexterity}}</h3>
+            <ul>
+                <li>
+                    Attack (Missile): {{if ge
+                    .Character.DexterityModifiers.AttackMod
+                    0}}+{{end}}{{.Character.DexterityModifiers.AttackMod}}
+                </li>
+                <li>
+                    Defense: {{if ge .Character.DexterityModifiers.DefenseAdj
+                    0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}
+                </li>
+                <li>
+                    Test of Dexterity:
+                    {{.Character.DexterityModifiers.TestOfDexterity}}
+                </li>
+                <li>
+                    Extraordinary Feat:
+                    {{.Character.DexterityModifiers.ExtraordinaryFeat}}%
+                </li>
+            </ul>
+
+            <h3>Constitution: {{.Character.Constitution}}</h3>
+            <ul>
+                <li>
+                    Hit Points/Level: {{if ge
+                    .Character.ConstitutionModifiers.HitPointMod
+                    0}}+{{end}}{{.Character.ConstitutionModifiers.HitPointMod}}
+                </li>
+                <li>
+                    Poison/Radiation: {{if ge
+                    .Character.ConstitutionModifiers.PoisonRadMod
+                    0}}+{{end}}{{.Character.ConstitutionModifiers.PoisonRadMod}}
+                </li>
+                <li>
+                    Trauma Survival:
+                    {{.Character.ConstitutionModifiers.TraumaSurvival}}%
+                </li>
+                <li>
+                    Test of Constitution:
+                    {{.Character.ConstitutionModifiers.TestOfCon}}
+                </li>
+                <li>
+                    Extraordinary Feat:
+                    {{.Character.ConstitutionModifiers.ExtraordinaryFeat}}%
+                </li>
+            </ul>
+
+            <h3>Intelligence: {{.Character.Intelligence}}</h3>
+            <h3>Wisdom: {{.Character.Wisdom}}</h3>
+            <h3>Charisma: {{.Character.Charisma}}</h3>
+        </div>
+    </div>
+
+    <!-- Inventory Section -->
+    <div>
+        <div>
+            <h2>Inventory</h2>
+            <a href="/characters/inventory/add?character_id={{.Character.ID}}">Add Item</a>
         </div>
 
-        <div class="stat-section ability-scores-section">
-            <h2>Ability Scores</h2>
-            <div class="ability-scores-grid">
-                <!-- Strength Section -->
-                <div class="ability-score-detailed">
-                    <h3>Strength</h3>
-                    <div class="score-value">{{.Character.Strength}}</div>
-                    <div class="modifier-details">
-                        <div class="modifier-row">
-                            <span class="label">Attack (Melee):</span>
-                            <span class="value"
-                                >{{if ge .Character.StrengthModifiers.AttackMod
-                                0}}+{{end}}{{.Character.StrengthModifiers.AttackMod}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Damage:</span>
-                            <span class="value"
-                                >{{if ge .Character.StrengthModifiers.DamageMod
-                                0}}+{{end}}{{.Character.StrengthModifiers.DamageMod}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Test of Strength:</span>
-                            <span class="value"
-                                >{{.Character.StrengthModifiers.TestOfStrength}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Extraordinary Feat:</span>
-                            <span class="value"
-                                >{{.Character.StrengthModifiers.ExtraordinaryFeat}}%</span
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Dexterity Section -->
-                <div class="ability-score-detailed">
-                    <h3>Dexterity</h3>
-                    <div class="score-value">{{.Character.Dexterity}}</div>
-                    <div class="modifier-details">
-                        <div class="modifier-row">
-                            <span class="label">Attack (Missile):</span>
-                            <span class="value"
-                                >{{if ge .Character.DexterityModifiers.AttackMod
-                                0}}+{{end}}{{.Character.DexterityModifiers.AttackMod}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Defense:</span>
-                            <span class="value"
-                                >{{if ge
-                                .Character.DexterityModifiers.DefenseAdj
-                                0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Test of Dexterity:</span>
-                            <span class="value"
-                                >{{.Character.DexterityModifiers.TestOfDexterity}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Extraordinary Feat:</span>
-                            <span class="value"
-                                >{{.Character.DexterityModifiers.ExtraordinaryFeat}}%</span
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Constitution Section -->
-                <div class="ability-score-detailed">
-                    <h3>Constitution</h3>
-                    <div class="score-value">{{.Character.Constitution}}</div>
-                    <div class="modifier-details">
-                        <div class="modifier-row">
-                            <span class="label">Hit Points/Level:</span>
-                            <span class="value"
-                                >{{if ge
-                                .Character.ConstitutionModifiers.HitPointMod
-                                0}}+{{end}}{{.Character.ConstitutionModifiers.HitPointMod}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Poison/Radiation:</span>
-                            <span class="value"
-                                >{{if ge
-                                .Character.ConstitutionModifiers.PoisonRadMod
-                                0}}+{{end}}{{.Character.ConstitutionModifiers.PoisonRadMod}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Trauma Survival:</span>
-                            <span class="value"
-                                >{{.Character.ConstitutionModifiers.TraumaSurvival}}%</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Test of Constitution:</span>
-                            <span class="value"
-                                >{{.Character.ConstitutionModifiers.TestOfCon}}</span
-                            >
-                        </div>
-                        <div class="modifier-row">
-                            <span class="label">Extraordinary Feat:</span>
-                            <span class="value"
-                                >{{.Character.ConstitutionModifiers.ExtraordinaryFeat}}%</span
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Intelligence Section -->
-                <div class="ability-score">
-                    <h3>Intelligence</h3>
-                    <div class="score-value">{{.Character.Intelligence}}</div>
-                </div>
-
-                <!-- Wisdom Section -->
-                <div class="ability-score">
-                    <h3>Wisdom</h3>
-                    <div class="score-value">{{.Character.Wisdom}}</div>
-                </div>
-
-                <!-- Charisma Section -->
-                <div class="ability-score">
-                    <h3>Charisma</h3>
-                    <div class="score-value">{{.Character.Charisma}}</div>
-                </div>
-            </div>
+        <!-- Encumbrance Information -->
+        <div>
+            <h3>Encumbrance Status</h3>
+            <p>Total Weight: {{.Character.InventoryStats.TotalWeight}} lbs</p>
+            <p>Status: {{.Character.InventoryStats.EncumbranceLevel}}</p>
+            <p>
+                Encumbered at: {{.Character.InventoryStats.BaseEncumbered}} lbs
+            </p>
+            <p>
+                Heavily Encumbered at:
+                {{.Character.InventoryStats.BaseHeavyEncumbered}} lbs
+            </p>
+            <p>
+                Maximum Capacity: {{.Character.InventoryStats.MaximumCapacity}}
+                lbs
+            </p>
         </div>
+
+        <!-- Equipped Items -->
+        {{if .Character.EquippedItems}}
+        <div>
+            <h3>Equipped Items</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Slot</th>
+                        <th>Item</th>
+                        <th>Weight</th>
+                        <th>Quantity</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Character.EquippedItems}}
+                    <tr>
+                        <td>{{.SlotName.String}}</td>
+                        <td>{{.ItemName}}</td>
+                        <td>{{.ItemWeight}} lbs</td>
+                        <td>{{.Quantity}}</td>
+                        <td>{{if .Notes}}{{.Notes.String}}{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+
+        <!-- Carried Items -->
+        {{if .Character.CarriedItems}}
+        <div>
+            <h3>Carried Items</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Weight</th>
+                        <th>Quantity</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Character.CarriedItems}}
+                    <tr>
+                        <td>{{.ItemName}}</td>
+                        <td>{{.ItemWeight}} lbs</td>
+                        <td>{{.Quantity}}</td>
+                        <td>{{if .Notes}}{{.Notes.String}}{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+
+        <!-- Container Contents -->
+        {{range $containerId, $items := .Character.ContainerItems}}
+        <div>
+            <h3>Container Contents</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Weight</th>
+                        <th>Quantity</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $items}}
+                    <tr>
+                        <td>{{.ItemName}}</td>
+                        <td>{{.ItemWeight}} lbs</td>
+                        <td>{{.Quantity}}</td>
+                        <td>{{if .Notes}}{{.Notes.String}}{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
     </div>
 </div>
 {{end}}
