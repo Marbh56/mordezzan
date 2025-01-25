@@ -23,28 +23,29 @@ INSERT INTO
         constitution,
         intelligence,
         wisdom,
-        charisma
+        charisma,
+        experience_points
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
 `
 
 type CreateCharacterParams struct {
-	UserID       int64  `json:"user_id"`
-	Name         string `json:"name"`
-	Class        string `json:"class"`
-	Level        int64  `json:"level"`
-	MaxHp        int64  `json:"max_hp"`
-	CurrentHp    int64  `json:"current_hp"`
-	Strength     int64  `json:"strength"`
-	Dexterity    int64  `json:"dexterity"`
-	Constitution int64  `json:"constitution"`
-	Intelligence int64  `json:"intelligence"`
-	Wisdom       int64  `json:"wisdom"`
-	Charisma     int64  `json:"charisma"`
+	UserID           int64  `json:"user_id"`
+	Name             string `json:"name"`
+	Class            string `json:"class"`
+	Level            int64  `json:"level"`
+	MaxHp            int64  `json:"max_hp"`
+	CurrentHp        int64  `json:"current_hp"`
+	Strength         int64  `json:"strength"`
+	Dexterity        int64  `json:"dexterity"`
+	Constitution     int64  `json:"constitution"`
+	Intelligence     int64  `json:"intelligence"`
+	Wisdom           int64  `json:"wisdom"`
+	Charisma         int64  `json:"charisma"`
+	ExperiencePoints int64  `json:"experience_points"`
 }
 
-// sql/queries/characters.sql
 func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams) (Character, error) {
 	row := q.db.QueryRowContext(ctx, createCharacter,
 		arg.UserID,
@@ -59,6 +60,7 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		arg.Intelligence,
 		arg.Wisdom,
 		arg.Charisma,
+		arg.ExperiencePoints,
 	)
 	var i Character
 	err := row.Scan(
@@ -77,6 +79,7 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.Charisma,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExperiencePoints,
 	)
 	return i, err
 }
@@ -100,7 +103,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacter = `-- name: GetCharacter :one
 SELECT
-    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
 FROM
     characters
 WHERE
@@ -134,13 +137,14 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.Charisma,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExperiencePoints,
 	)
 	return i, err
 }
 
 const listCharactersByUser = `-- name: ListCharactersByUser :many
 SELECT
-    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
 FROM
     characters
 WHERE
@@ -174,6 +178,7 @@ func (q *Queries) ListCharactersByUser(ctx context.Context, userID int64) ([]Cha
 			&i.Charisma,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ExperiencePoints,
 		); err != nil {
 			return nil, err
 		}
@@ -202,26 +207,28 @@ SET
     intelligence = ?,
     wisdom = ?,
     charisma = ?,
+    experience_points = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?
-    AND user_id = ? RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at
+    AND user_id = ? RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
 `
 
 type UpdateCharacterParams struct {
-	Name         string `json:"name"`
-	Class        string `json:"class"`
-	Level        int64  `json:"level"`
-	MaxHp        int64  `json:"max_hp"`
-	CurrentHp    int64  `json:"current_hp"`
-	Strength     int64  `json:"strength"`
-	Dexterity    int64  `json:"dexterity"`
-	Constitution int64  `json:"constitution"`
-	Intelligence int64  `json:"intelligence"`
-	Wisdom       int64  `json:"wisdom"`
-	Charisma     int64  `json:"charisma"`
-	ID           int64  `json:"id"`
-	UserID       int64  `json:"user_id"`
+	Name             string `json:"name"`
+	Class            string `json:"class"`
+	Level            int64  `json:"level"`
+	MaxHp            int64  `json:"max_hp"`
+	CurrentHp        int64  `json:"current_hp"`
+	Strength         int64  `json:"strength"`
+	Dexterity        int64  `json:"dexterity"`
+	Constitution     int64  `json:"constitution"`
+	Intelligence     int64  `json:"intelligence"`
+	Wisdom           int64  `json:"wisdom"`
+	Charisma         int64  `json:"charisma"`
+	ExperiencePoints int64  `json:"experience_points"`
+	ID               int64  `json:"id"`
+	UserID           int64  `json:"user_id"`
 }
 
 func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams) (Character, error) {
@@ -237,6 +244,7 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		arg.Intelligence,
 		arg.Wisdom,
 		arg.Charisma,
+		arg.ExperiencePoints,
 		arg.ID,
 		arg.UserID,
 	)
@@ -257,6 +265,7 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.Charisma,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ExperiencePoints,
 	)
 	return i, err
 }

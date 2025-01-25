@@ -207,7 +207,20 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	}
 
 	// Validate class
-	if params.Class != "Fighter" {
+	validClasses := map[string]bool{
+		"Fighter":     true,
+		"Cleric":      true,
+		"Magician":    true,
+		"Thief":       true,
+		"Barbarian":   true,
+		"Ranger":      true,
+		"Paladin":     true,
+		"Druid":       true,
+		"Assassin":    true,
+		"Necromancer": true,
+	}
+
+	if !validClasses[params.Class] {
 		http.Redirect(w, r, "/characters/create?message=Invalid character class", http.StatusSeeOther)
 		return
 	}

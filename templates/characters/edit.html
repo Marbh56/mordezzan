@@ -20,6 +20,15 @@
                 <label for="class">Character Class:</label>
                 <select id="class" name="class" required>
                     <option value="Fighter" {{if eq .Character.Class "Fighter"}}selected{{end}}>Fighter</option>
+                    <option value="Cleric" {{if eq .Character.Class "Cleric"}}selected{{end}}>Cleric</option>
+                    <option value="Magician" {{if eq .Character.Class "Magician"}}selected{{end}}>Magician</option>
+                    <option value="Thief" {{if eq .Character.Class "Thief"}}selected{{end}}>Thief</option>
+                    <option value="Barbarian" {{if eq .Character.Class "Barbarian"}}selected{{end}}>Barbarian</option>
+                    <option value="Ranger" {{if eq .Character.Class "Ranger"}}selected{{end}}>Ranger</option>
+                    <option value="Paladin" {{if eq .Character.Class "Paladin"}}selected{{end}}>Paladin</option>
+                    <option value="Druid" {{if eq .Character.Class "Druid"}}selected{{end}}>Druid</option>
+                    <option value="Assassin" {{if eq .Character.Class "Assassin"}}selected{{end}}>Assassin</option>
+                    <option value="Necromancer" {{if eq .Character.Class "Necromancer"}}selected{{end}}>Necromancer</option>
                 </select>
             </div>
 

@@ -1,4 +1,3 @@
--- sql/queries/characters.sql
 -- name: CreateCharacter :one
 INSERT INTO
     characters (
@@ -13,10 +12,11 @@ INSERT INTO
         constitution,
         intelligence,
         wisdom,
-        charisma
+        charisma,
+        experience_points
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
 
 -- name: GetCharacter :one
 SELECT
@@ -53,6 +53,7 @@ SET
     intelligence = ?,
     wisdom = ?,
     charisma = ?,
+    experience_points = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?

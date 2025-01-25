@@ -72,6 +72,10 @@ type CharacterViewModel struct {
 	// Calculated inventory statistics
 	InventoryStats InventoryStats `json:"inventory_stats"`
 
+	ExperiencePoints int64 `json:"experience_points"`
+	NextLevelXP      int64 `json:"next_level_xp"`
+	XPNeeded         int64 `json:"xp_needed"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -104,21 +108,22 @@ func interfaceToInt(v interface{}) int {
 // Creates a new character view model with inventory data
 func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryRow) CharacterViewModel {
 	vm := CharacterViewModel{
-		ID:           c.ID,
-		UserID:       c.UserID,
-		Name:         c.Name,
-		Class:        c.Class,
-		Level:        c.Level,
-		MaxHp:        c.MaxHp,
-		CurrentHp:    c.CurrentHp,
-		Strength:     c.Strength,
-		Dexterity:    c.Dexterity,
-		Constitution: c.Constitution,
-		Intelligence: c.Intelligence,
-		Wisdom:       c.Wisdom,
-		Charisma:     c.Charisma,
-		CreatedAt:    c.CreatedAt,
-		UpdatedAt:    c.UpdatedAt,
+		ID:               c.ID,
+		UserID:           c.UserID,
+		Name:             c.Name,
+		Class:            c.Class,
+		Level:            c.Level,
+		MaxHp:            c.MaxHp,
+		CurrentHp:        c.CurrentHp,
+		Strength:         c.Strength,
+		Dexterity:        c.Dexterity,
+		Constitution:     c.Constitution,
+		Intelligence:     c.Intelligence,
+		Wisdom:           c.Wisdom,
+		Charisma:         c.Charisma,
+		CreatedAt:        c.CreatedAt,
+		UpdatedAt:        c.UpdatedAt,
+		ExperiencePoints: c.ExperiencePoints,
 
 		// Initialize modifiers
 		StrengthModifiers:     rules.CalculateStrengthModifiers(c.Strength),
@@ -127,6 +132,20 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 
 		// Initialize inventory containers
 		ContainerItems: make(map[int64][]InventoryItem),
+	}
+
+	// Get class progression
+	progression := rules.GetClassProgression(vm.Class)
+
+	// Calculate XP needed for next level
+	vm.XPNeeded = progression.GetXPForNextLevel(c.ExperiencePoints)
+
+	// Get XP required for current level
+	for _, level := range progression.Levels {
+		if level.Level > c.Level {
+			vm.NextLevelXP = level.XPRequired
+			break
+		}
 	}
 
 	// Initialize inventory stats with encumbrance thresholds

@@ -31,6 +31,15 @@
         <div>{{.Character.CurrentHp}} / {{.Character.MaxHp}}</div>
     </div>
 
+    <div class="character-xp">
+        <h2>Experience</h2>
+        <div class="xp-details">
+            <div>Current XP: {{.Character.ExperiencePoints}}</div>
+            <div>Next Level: {{.Character.NextLevelXP}}</div>
+            <div>XP Needed: {{.Character.XPNeeded}}</div>
+        </div>
+    </div>
+
     <!-- Ability Scores -->
     <div>
         <h2>Ability Scores</h2>
