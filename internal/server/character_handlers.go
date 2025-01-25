@@ -19,7 +19,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get character ID from URL query parameter
 	characterIDStr := r.URL.Query().Get("id")
 	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
 	if err != nil {
@@ -27,7 +26,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get character from database
 	queries := db.New(s.db)
 	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
 		ID:     characterID,
@@ -39,7 +37,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get character inventory
 	inventory, err := queries.GetCharacterInventory(r.Context(), characterID)
 	if err != nil {
 		log.Printf("Error fetching inventory: %v", err)
@@ -47,10 +44,10 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create view model with calculated modifiers and inventory
 	viewModel := NewCharacterViewModel(character, inventory)
 
-	tmpl, err := template.New("base.html").Funcs(template.FuncMap{
+	// Create a function map and add our seq function
+	funcMap := template.FuncMap{
 		"seq": func(start, end int) []int {
 			s := make([]int, end-start+1)
 			for i := range s {
@@ -58,7 +55,13 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return s
 		},
-	}).ParseFiles(
+	}
+
+	// Initialize template with the function map
+	tmpl := template.New("base.html").Funcs(funcMap)
+
+	// Parse the templates
+	tmpl, err = tmpl.ParseFiles(
 		"templates/layout/base.html",
 		"templates/characters/detail.html",
 	)

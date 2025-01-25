@@ -100,8 +100,14 @@ func GetClassProgression(className string) ClassProgression {
 		return MagicianProgression
 	case "Fighter":
 		return FighterProgression
+	case "Cleric":
+		return ClericProgression
+	case "Thief":
+		return ThiefProgression
+	case "Barbarian", "Ranger", "Paladin", "Druid", "Assassin", "Necromancer":
+		return FighterProgression // Use Fighter progression as default for martial classes
 	default:
-		return ClassProgression{}
+		return FighterProgression // Return Fighter progression as default
 	}
 }
 

@@ -63,6 +63,7 @@ type CharacterViewModel struct {
 
 	// Combat information
 	CombatMatrix []int64 `json:"combat_matrix"`
+	SavingThrow  int64   `json:"saving_throw"`
 
 	// Inventory organization
 	EquippedItems  []InventoryItem           `json:"equipped_items"`
@@ -212,6 +213,10 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	for ac := -9; ac <= 9; ac++ {
 		vm.CombatMatrix[ac+9] = rules.GetTargetNumber(fa, int64(ac))
 	}
+
+	// Get saving throw value
+	progression = rules.GetClassProgression(vm.Class)
+	vm.SavingThrow = progression.GetSavingThrow(vm.Level)
 
 	return vm
 }
