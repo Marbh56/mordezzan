@@ -109,11 +109,31 @@
         </div>
     </div>
 
+    <div>
+        <h3>Combat Matrix</h3>
+        <table border="1">
+            <tr>
+                <th>AC</th>
+                {{range $i := seq -9 9}}
+                <th>{{$i}}</th>
+                {{end}}
+            </tr>
+            <tr>
+                <td>Target</td>
+                {{range $tn := .Character.CombatMatrix}}
+                <td>{{$tn}}</td>
+                {{end}}
+            </tr>
+        </table>
+    </div>
+
     <!-- Inventory Section -->
     <div>
         <div>
             <h2>Inventory</h2>
-            <a href="/characters/inventory/add?character_id={{.Character.ID}}">Add Item</a>
+            <a href="/characters/inventory/add?character_id={{.Character.ID}}"
+                >Add Item</a
+            >
         </div>
 
         <!-- Encumbrance Information -->
