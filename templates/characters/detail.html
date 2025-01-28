@@ -227,6 +227,82 @@
             </tr>
         </table>
     </div>
+
+    <div>
+        <h2>Class Abilities</h2>
+        {{if eq .Character.Class "Fighter"}}
+        <details>
+            <summary>Heroic Fighting</summary>
+            <p>
+                To smite multiple foes. When combating opponents of 1 Hit Dice
+                or less, double normal melee attacks per round (2/1, or 3/1 if
+                weilding a mastered weapon). This dramatic attack could be
+                effected as a single, devastating swing or lunge that burst
+                through multiple foes.
+            </p>
+            <p>
+                At 7th level, when combating foes of 2 HD or less, double normal
+                melee attacks per round (3/1, or 4/1 if wielding a mastered
+                weapon)
+            </p>
+        </details>
+        <details>
+            <summary>Multiple Attacks</summary>
+            <p>
+                At 4th level, you can make two attacks per round against enemies
+                with 1 HD or less.
+            </p>
+        </details>
+        {{else if eq .Character.Class "Thief"}}
+        <details>
+            <summary>Backstab</summary>
+            <p>
+                When attacking unaware opponents from behind, you deal double
+                damage. This multiplier increases to ×3 at 5th level and ×4 at
+                9th level.
+            </p>
+        </details>
+        <details>
+            <summary>Thief Skills</summary>
+            <p>
+                You have special abilities that improve as you gain levels: Open
+                Locks, Remove Traps, Pick Pockets, Move Silently, Climb Walls,
+                Hide in Shadows.
+            </p>
+        </details>
+        {{else if eq .Character.Class "Cleric"}}
+        <details>
+            <summary>Turn Undead</summary>
+            <p>
+                As an action, you can attempt to turn undead creatures within 60
+                feet. The effectiveness improves as you gain levels.
+            </p>
+        </details>
+        <details>
+            <summary>Divine Magic</summary>
+            <p>
+                You can cast divine spells. Your spell slots increase as you
+                gain levels.
+            </p>
+        </details>
+        {{else if eq .Character.Class "Magician"}}
+        <details>
+            <summary>Arcane Magic</summary>
+            <p>
+                You can cast arcane spells. Your spell slots increase as you
+                gain levels.
+            </p>
+        </details>
+        <details>
+            <summary>Arcane Research</summary>
+            <p>
+                You can research new spells and create magic scrolls when you
+                have the time and resources.
+            </p>
+        </details>
+        {{end}}
+    </div>
+
     <!-- Combat -->
     <div>
         <h2>Combat Matrix</h2>
