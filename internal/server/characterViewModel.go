@@ -38,6 +38,19 @@ type InventoryStats struct {
 	EncumbranceLevel    string `json:"encumbrance_level"` // "None", "Encumbered", "Heavy", "Over"
 }
 
+func classGetsFighterBonus(class string) bool {
+	fighterClasses := map[string]bool{
+		"Fighter":   true,
+		"Barbarian": true,
+		"Beserker":  true,
+		"Huntsman":  true,
+		"Paladin":   true,
+		"Ranger":    true,
+		"Warlock":   true,
+	}
+	return fighterClasses[class]
+}
+
 // Complete character view model including inventory
 type CharacterViewModel struct {
 	ID        int64  `json:"id"`
@@ -144,6 +157,10 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 
 		// Initialize inventory containers
 		ContainerItems: make(map[int64][]InventoryItem),
+	}
+
+	if classGetsFighterBonus(c.Class) {
+		vm.StrengthModifiers.ExtraordinaryFeat += 8
 	}
 
 	// Get class progression
