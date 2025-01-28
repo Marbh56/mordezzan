@@ -112,6 +112,11 @@ func interfaceToInt(v interface{}) int {
 	return 0
 }
 
+// Helper functions for templates
+func add(a, b int) int {
+	return a + b
+}
+
 // Creates a new character view model with inventory data
 func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryRow) CharacterViewModel {
 	vm := CharacterViewModel{

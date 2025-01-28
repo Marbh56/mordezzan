@@ -55,11 +55,57 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return s
 		},
+		"GetSavingThrowModifiers": rules.GetSavingThrowModifiers,
+		"add": func(a, b interface{}) int64 {
+			// Handle int64 + int
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v + int64(w)
+				case int64:
+					return v + w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) + w
+				case int:
+					return int64(v + w)
+				}
+			}
+			return 0
+		},
+		"sub": func(a, b interface{}) int64 {
+			// Handle int64 - int
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v - int64(w)
+				case int64:
+					return v - w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) - w
+				case int:
+					return int64(v - w)
+				}
+			}
+			return 0
+		},
+		"abs": func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		},
 	}
 
 	// Initialize template with the function map
 	tmpl := template.New("base.html").Funcs(funcMap)
-
 	// Parse the templates
 	tmpl, err = tmpl.ParseFiles(
 		"templates/layout/base.html",

@@ -4,11 +4,11 @@ package rules
 
 // SavingThrowModifiers contains the modifiers for each type of saving throw
 type SavingThrowModifiers struct {
-	Death          int
-	Transformation int
-	Device         int
-	Avoidance      int
-	Sorcery        int
+	Death          int64
+	Transformation int64
+	Device         int64
+	Avoidance      int64
+	Sorcery        int64
 }
 
 // GetSavingThrowModifiers returns the saving throw modifiers for a fighter
