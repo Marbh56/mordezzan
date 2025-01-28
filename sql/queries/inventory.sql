@@ -20,7 +20,26 @@ SELECT
         WHEN 'shield' THEN s.weight
         WHEN 'ranged_weapon' THEN rw.weight
         ELSE 0
-    END as item_weight
+    END as item_weight,
+    CASE ci.item_type
+        WHEN 'weapon' THEN (
+            SELECT
+                damage
+            FROM
+                weapons
+            WHERE
+                id = ci.item_id
+        )
+        WHEN 'ranged_weapon' THEN (
+            SELECT
+                damage
+            FROM
+                ranged_weapons
+            WHERE
+                id = ci.item_id
+        )
+        ELSE NULL
+    END as damage
 FROM
     character_inventory ci
     LEFT JOIN equipment_slots es ON ci.equipment_slot_id = es.id

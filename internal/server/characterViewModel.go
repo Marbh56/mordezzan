@@ -20,6 +20,7 @@ type InventoryItem struct {
 	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
 	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
 	SlotName             sql.NullString `json:"slot_name"`
+	Damage               sql.NullString `json:"damage"`
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
@@ -57,9 +58,14 @@ type CharacterViewModel struct {
 	Constitution          int64                       `json:"constitution"`
 	ConstitutionModifiers rules.ConstitutionModifiers `json:"constitution_modifiers"`
 
-	Intelligence int64 `json:"intelligence"`
-	Wisdom       int64 `json:"wisdom"`
-	Charisma     int64 `json:"charisma"`
+	Intelligence          int64                       `json:"intelligence"`
+	IntelligenceModifiers rules.IntelligenceModifiers `json:"intelligence_modifiers"`
+
+	Wisdom          int64                 `json:"wisdom"`
+	WisdomModifiers rules.WisdomModifiers `json:"wisdom_modifiers"`
+
+	Charisma          int64                   `json:"charisma"`
+	CharismaModifiers rules.CharismaModifiers `json:"charisma_modifiers"`
 
 	// Combat information
 	CombatMatrix []int64 `json:"combat_matrix"`
@@ -159,6 +165,11 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 
 	// Process inventory items
 	for _, item := range inventory {
+		damage := sql.NullString{}
+		if d, ok := item.Damage.(sql.NullString); ok {
+			damage = d
+		}
+
 		invItem := InventoryItem{
 			ID:                   item.ID,
 			CharacterID:          item.CharacterID,
@@ -170,6 +181,7 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 			ContainerInventoryID: item.ContainerInventoryID,
 			EquipmentSlotID:      item.EquipmentSlotID,
 			SlotName:             item.SlotName,
+			Damage:               damage,
 			Notes:                item.Notes,
 			CreatedAt:            item.CreatedAt,
 			UpdatedAt:            item.UpdatedAt,

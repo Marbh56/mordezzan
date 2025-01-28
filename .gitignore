@@ -29,10 +29,6 @@ todo.md
 
 #data base files
 *.db
-005_Add_Weapons.sql
-013_GE_Insert1.sql
-014_GE_Insert2.sql
-015_GE_Insert3.sql
 
 #misc
 repomix-output.txt

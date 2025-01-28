@@ -113,20 +113,104 @@
             </ul>
 
             <h3>Intelligence: {{.Character.Intelligence}}</h3>
+            <ul>
+                <li>
+                    Languages: {{.Character.IntelligenceModifiers.Languages}}
+                    additional
+                </li>
+                <li>
+                    Bonus Spell Level:
+                    {{.Character.IntelligenceModifiers.BonusSpellLevel}}
+                </li>
+                <li>
+                    Chance to Learn:
+                    {{.Character.IntelligenceModifiers.ChanceToLearn}}%
+                </li>
+                <li>
+                    Literate: {{if
+                    .Character.IntelligenceModifiers.IsLiterate}}Yes{{else}}No{{end}}
+                </li>
+            </ul>
+
             <h3>Wisdom: {{.Character.Wisdom}}</h3>
+            <ul>
+                <li>
+                    Willpower Adjustment: {{if ge
+                    .Character.WisdomModifiers.WillpowerAdj
+                    0}}+{{end}}{{.Character.WisdomModifiers.WillpowerAdj}}
+                </li>
+                <li>
+                    Bonus Spell Level:
+                    {{.Character.WisdomModifiers.BonusSpellLevel}}
+                </li>
+                <li>
+                    Spell Learning Chance:
+                    {{.Character.WisdomModifiers.SpellLearningChance}}%
+                </li>
+            </ul>
+
             <h3>Charisma: {{.Character.Charisma}}</h3>
+            <ul>
+                <li>
+                    Reaction/Loyalty Adjustment: {{if ge
+                    .Character.CharismaModifiers.ReactionLoyaltyAdj
+                    0}}+{{end}}{{.Character.CharismaModifiers.ReactionLoyaltyAdj}}
+                </li>
+                <li>
+                    Maximum Henchmen:
+                    {{.Character.CharismaModifiers.MaxHenchmen}}
+                </li>
+                <li>
+                    Undead Turning Adjustment: {{if ge
+                    .Character.CharismaModifiers.UndeadTurningAdj
+                    0}}+{{end}}{{.Character.CharismaModifiers.UndeadTurningAdj}}
+                </li>
+            </ul>
         </div>
     </div>
 
     <!-- Saving Throws -->
     <div>
-        <h3>Saving Throw</h3>
-        <p>Target: {{.Character.SavingThrow}}+ on d20</p>
+        <h2>Saving Throws</h2>
+        <p>Base Target: {{.Character.SavingThrow}}+ on d20</p>
+
+        <table class="saving-throws">
+            <tr>
+                <th>Type</th>
+                <th>Modifier</th>
+                <th>Final Target</th>
+            </tr>
+            <tr>
+                <td>Death</td>
+                <td>+0</td>
+                <td>{{.Character.SavingThrow}}</td>
+            </tr>
+            <tr>
+                <td>Transformation</td>
+                <td>+0</td>
+                <td>{{.Character.SavingThrow}}</td>
+            </tr>
+            <tr>
+                <td>Device</td>
+                <td>+0</td>
+                <td>{{.Character.SavingThrow}}</td>
+            </tr>
+            <tr>
+                <td>Avoidance</td>
+                <td>+0</td>
+                <td>{{.Character.SavingThrow}}</td>
+            </tr>
+            <tr>
+                <td>Sorcery</td>
+                <td>+0</td>
+                <td>{{.Character.SavingThrow}}</td>
+            </tr>
+        </table>
     </div>
 
     <!-- Combat -->
     <div>
-        <h3>Combat Matrix</h3>
+        <h2>Combat Matrix</h2>
         <table border="1">
             <tr>
                 <th>AC</th>
@@ -143,6 +227,18 @@
         </table>
     </div>
 
+    <div>
+        <h2>Equipped Weapons</h2>
+        {{range .Character.EquippedItems}} {{if or (eq .ItemType "weapon") (eq
+        .ItemType "ranged_weapon")}}
+        <div class="weapon-entry">
+            <h3>{{.ItemName}}</h3>
+            {{if .Damage.Valid}}
+            <p>Base Damage: {{.Damage.String}}</p>
+            {{end}}
+        </div>
+        {{end}} {{end}}
+    </div>
     <!-- Inventory Section -->
     <div>
         <div>
@@ -181,6 +277,7 @@
                         <th>Item</th>
                         <th>Weight</th>
                         <th>Quantity</th>
+                        <th>Damage</th>
                         <th>Notes</th>
                     </tr>
                 </thead>
@@ -191,6 +288,7 @@
                         <td>{{.ItemName}}</td>
                         <td>{{.ItemWeight}} lbs</td>
                         <td>{{.Quantity}}</td>
+                        <td>{{if .Damage.Valid}}{{.Damage.String}}{{end}}</td>
                         <td>{{if .Notes}}{{.Notes.String}}{{end}}</td>
                     </tr>
                     {{end}}
