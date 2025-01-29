@@ -64,6 +64,15 @@ type CharacterInventory struct {
 	UpdatedAt            time.Time      `json:"updated_at"`
 }
 
+type CharacterWeaponMastery struct {
+	ID           int64     `json:"id"`
+	CharacterID  int64     `json:"character_id"`
+	WeaponID     int64     `json:"weapon_id"`
+	MasteryLevel string    `json:"mastery_level"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 type Container struct {
 	ID             int64          `json:"id"`
 	Name           string         `json:"name"`

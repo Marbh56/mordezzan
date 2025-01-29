@@ -4,8 +4,13 @@
     <h1>{{.Character.Name}}</h1>
 
     <!-- Character Actions -->
-    <div>
+    <div class="quick-actions">
         <a href="/characters/edit?id={{.Character.ID}}">Edit Character</a>
+        {{if eq .Character.Class "Fighter"}}
+        <a href="/characters/masteries?id={{.Character.ID}}"
+            >Manage Weapon Masteries</a
+        >
+        {{end}}
         <form action="/characters/delete" method="POST" style="display: inline">
             <input
                 type="hidden"

@@ -1,0 +1,129 @@
+{{define "title"}}Weapon Masteries - {{.Character.Name}} - Mordezzan{{end}}
+{{define "content"}}
+<div class="weapon-masteries">
+    <h1>Weapon Masteries - {{.Character.Name}}</h1>
+
+    {{if .FlashMessage}}
+    <div class="flash-message">{{.FlashMessage}}</div>
+    {{end}}
+
+    <div class="mastery-info">
+        <h2>Available Mastery Slots: {{.AvailableSlots}}</h2>
+        <p>At 4th, 8th, and 12th level, you gain additional mastery slots.</p>
+        {{if .HasGrandMastery}}
+        <p class="warning">You already have a grand mastery weapon.</p>
+        {{end}}
+    </div>
+
+    <!-- Current Masteries -->
+    {{if .CurrentMasteries}}
+    <div class="current-masteries">
+        <h2>Current Weapon Masteries</h2>
+        <div class="mastery-list">
+            {{range .CurrentMasteries}}
+            <div class="mastery-item">
+                <h3>{{.WeaponName}}</h3>
+                <p>Mastery Level: {{.MasteryLevel}}</p>
+                <p>Base Damage: {{.BaseDamage}}</p>
+                {{if .BaseAttacks.Valid}}
+                <p>Base Attacks: {{.BaseAttacks.String}}</p>
+                {{end}}
+
+                <div class="mastery-actions">
+                    {{if eq .MasteryLevel "mastered"}} {{if not
+                    $.HasGrandMastery}}
+                    <form
+                        action="/characters/masteries?id={{$.Character.ID}}&action=upgrade"
+                        method="POST"
+                    >
+                        <input
+                            type="hidden"
+                            name="character_id"
+                            value="{{$.Character.ID}}"
+                        />
+                        <input
+                            type="hidden"
+                            name="weapon_id"
+                            value="{{.WeaponID}}"
+                        />
+                        <button type="submit" class="upgrade-button">
+                            Upgrade to Grand Mastery
+                        </button>
+                    </form>
+                    {{end}} {{end}}
+
+                    <form
+                        action="/characters/masteries?id={{$.Character.ID}}&action=remove"
+                        method="POST"
+                    >
+                        <input
+                            type="hidden"
+                            name="character_id"
+                            value="{{$.Character.ID}}"
+                        />
+                        <input
+                            type="hidden"
+                            name="weapon_id"
+                            value="{{.WeaponID}}"
+                        />
+                        <button
+                            type="submit"
+                            class="remove-button"
+                            onclick="return confirm('Are you sure you want to remove this weapon mastery?')"
+                        >
+                            Remove Mastery
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
+    <!-- Add New Mastery -->
+    {{if gt .AvailableSlots 0}}
+    <div class="add-mastery">
+        <h2>Add New Weapon Mastery</h2>
+        <form
+            action="/characters/masteries?id={{.Character.ID}}&action=add"
+            method="POST"
+        >
+            <input
+                type="hidden"
+                name="character_id"
+                value="{{.Character.ID}}"
+            />
+
+            <div class="form-group">
+                <label for="weapon_id">Select Weapon:</label>
+                <select name="weapon_id" id="weapon_id" required>
+                    <option value="">-- Select Weapon --</option>
+                    {{range .AvailableWeapons}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="mastery_level">Mastery Level:</label>
+                <select name="mastery_level" id="mastery_level" required>
+                    <option value="mastered">Mastered</option>
+                    {{if not .HasGrandMastery}}
+                    <option value="grand_mastery">Grand Mastery</option>
+                    {{end}}
+                </select>
+            </div>
+
+            <button type="submit" class="add-button">Add Weapon Mastery</button>
+        </form>
+    </div>
+    {{end}}
+
+    <div class="navigation">
+        <a href="/characters/detail?id={{.Character.ID}}" class="back-button"
+            >Back to Character</a
+        >
+    </div>
+</div>
+{{end}}
