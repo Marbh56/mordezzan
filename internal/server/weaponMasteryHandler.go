@@ -32,7 +32,7 @@ func (s *Server) HandleWeaponMastery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	characterIDStr := r.URL.Query().Get("id")
-	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
+	characterID, err := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
@@ -132,8 +132,6 @@ func (s *Server) handleWeaponMasteryForm(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Template data: %+v", data)
-	log.Printf("Parsing templates: base.html and weapons/mastery.html")
 
 	err = tmpl.ExecuteTemplate(w, "base.html", data)
 	if err != nil {

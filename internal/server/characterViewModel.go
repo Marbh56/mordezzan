@@ -171,7 +171,7 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 
 	// Get XP required for current level
 	for _, level := range progression.Levels {
-		if level.Level > c.Level {
+		if level.XPRequired > c.ExperiencePoints {
 			vm.NextLevelXP = level.XPRequired
 			break
 		}
