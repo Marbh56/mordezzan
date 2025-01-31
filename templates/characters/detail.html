@@ -343,15 +343,47 @@
 
     <div>
         <h2>Equipped Weapons</h2>
-        {{range .Character.EquippedItems}} {{if or (eq .ItemType "weapon") (eq
-        .ItemType "ranged_weapon")}}
-        <div class="weapon-entry">
-            <h3>{{.ItemName}}</h3>
-            {{if .Damage.Valid}}
-            <p>Base Damage: {{.Damage.String}}</p>
-            {{end}}
+        <div class="weapons-grid">
+            {{range .Character.EquippedItems}} {{if or (eq .ItemType "weapon")
+            (eq .ItemType "ranged_weapon")}}
+            <div class="weapon-entry">
+                <h3>{{.ItemName}}</h3>
+                <div class="weapon-details">
+                    <!-- Base Damage + Modifiers -->
+                    <!-- Debug: ItemType={{.ItemType}} Damage={{.Damage.String}} Valid={{.Damage.Valid}} -->
+                    {{if .Damage.Valid}}
+                    <p>
+                        <strong>Damage:</strong> {{.Damage.String}} {{if eq
+                        .ItemType "weapon"}} {{with
+                        $.Character.StrengthModifiers}} {{if gt .DamageMod
+                        0}}+{{.DamageMod}}{{end}} {{if lt .DamageMod
+                        0}}{{.DamageMod}}{{end}} {{end}} {{end}}
+                    </p>
+                    {{end}}
+
+                    <!-- To Hit Bonus -->
+                    <p>
+                        <strong>To Hit:</strong>
+                        {{if eq .ItemType "weapon"}} {{with
+                        $.Character.StrengthModifiers}} {{if gt .AttackMod
+                        0}}+{{.AttackMod}}{{end}} {{if lt .AttackMod
+                        0}}{{.AttackMod}}{{end}} {{end}} {{else}} {{with
+                        $.Character.DexterityModifiers}} {{if gt .AttackMod
+                        0}}+{{.AttackMod}}{{end}} {{if lt .AttackMod
+                        0}}{{.AttackMod}}{{end}} {{end}} {{end}}
+                    </p>
+
+                    <!-- Attack Rate -->
+                    {{if .AttacksPerRound.Valid}}
+                    <p>
+                        <strong>Attacks per Round:</strong>
+                        {{.AttacksPerRound.String}}
+                    </p>
+                    {{end}}
+                </div>
+            </div>
+            {{end}} {{end}}
         </div>
-        {{end}} {{end}}
     </div>
     <!-- Inventory Section -->
     <div>

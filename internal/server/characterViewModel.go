@@ -8,6 +8,19 @@ import (
 	"github.com/marbh56/mordezzan/internal/rules"
 )
 
+func interfaceToNullString(v interface{}) sql.NullString {
+	if v == nil {
+		return sql.NullString{}
+	}
+	if s, ok := v.(string); ok {
+		return sql.NullString{
+			String: s,
+			Valid:  true,
+		}
+	}
+	return sql.NullString{}
+}
+
 // Represents a single item in a character's inventory
 type InventoryItem struct {
 	ID                   int64          `json:"id"`
@@ -21,6 +34,7 @@ type InventoryItem struct {
 	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
 	SlotName             sql.NullString `json:"slot_name"`
 	Damage               sql.NullString `json:"damage"`
+	AttacksPerRound      sql.NullString `json:"attacks_per_round"`
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
@@ -185,10 +199,12 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 		MaximumCapacity:     encumbranceThresholds.MaximumCapacity,
 	}
 
-	// Process inventory items
 	for _, item := range inventory {
 		damage := sql.NullString{}
-		if d, ok := item.Damage.(sql.NullString); ok {
+		switch d := item.Damage.(type) {
+		case string:
+			damage = sql.NullString{String: d, Valid: true}
+		case sql.NullString:
 			damage = d
 		}
 
@@ -204,6 +220,7 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 			EquipmentSlotID:      item.EquipmentSlotID,
 			SlotName:             item.SlotName,
 			Damage:               damage,
+			AttacksPerRound:      interfaceToNullString(item.AttacksPerRound),
 			Notes:                item.Notes,
 			CreatedAt:            item.CreatedAt,
 			UpdatedAt:            item.UpdatedAt,

@@ -98,6 +98,61 @@ func (q *Queries) GetCharacterWeaponMasteries(ctx context.Context, characterID i
 	return items, nil
 }
 
+const getWeaponMasteriesForEquippedWeapons = `-- name: GetWeaponMasteriesForEquippedWeapons :many
+SELECT
+    cwm.weapon_id,
+    cwm.mastery_level,
+    w.name as weapon_name,
+    w.damage as base_damage,
+    w.attacks_per_round as base_attacks
+FROM
+    character_weapon_masteries cwm
+    JOIN weapons w ON cwm.weapon_id = w.id
+    JOIN character_inventory ci ON ci.item_id = cwm.weapon_id
+    AND ci.item_type = 'weapon'
+    AND ci.character_id = cwm.character_id
+WHERE
+    cwm.character_id = ?
+    AND ci.equipment_slot_id IS NOT NULL
+`
+
+type GetWeaponMasteriesForEquippedWeaponsRow struct {
+	WeaponID     int64          `json:"weapon_id"`
+	MasteryLevel string         `json:"mastery_level"`
+	WeaponName   string         `json:"weapon_name"`
+	BaseDamage   string         `json:"base_damage"`
+	BaseAttacks  sql.NullString `json:"base_attacks"`
+}
+
+func (q *Queries) GetWeaponMasteriesForEquippedWeapons(ctx context.Context, characterID int64) ([]GetWeaponMasteriesForEquippedWeaponsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getWeaponMasteriesForEquippedWeapons, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWeaponMasteriesForEquippedWeaponsRow
+	for rows.Next() {
+		var i GetWeaponMasteriesForEquippedWeaponsRow
+		if err := rows.Scan(
+			&i.WeaponID,
+			&i.MasteryLevel,
+			&i.WeaponName,
+			&i.BaseDamage,
+			&i.BaseAttacks,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWeaponMastery = `-- name: GetWeaponMastery :one
 SELECT
     cwm.id, cwm.character_id, cwm.weapon_id, cwm.mastery_level, cwm.created_at, cwm.updated_at,

@@ -47,3 +47,20 @@ WHERE
     AND cwm.weapon_id = ?
 LIMIT
     1;
+
+-- name: GetWeaponMasteriesForEquippedWeapons :many
+SELECT
+    cwm.weapon_id,
+    cwm.mastery_level,
+    w.name as weapon_name,
+    w.damage as base_damage,
+    w.attacks_per_round as base_attacks
+FROM
+    character_weapon_masteries cwm
+    JOIN weapons w ON cwm.weapon_id = w.id
+    JOIN character_inventory ci ON ci.item_id = cwm.weapon_id
+    AND ci.item_type = 'weapon'
+    AND ci.character_id = cwm.character_id
+WHERE
+    cwm.character_id = ?
+    AND ci.equipment_slot_id IS NOT NULL;

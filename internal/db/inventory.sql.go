@@ -85,25 +85,22 @@ SELECT
         WHEN 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight,
-    CASE ci.item_type
-        WHEN 'weapon' THEN (
-            SELECT
-                damage
-            FROM
-                weapons
-            WHERE
-                id = ci.item_id
-        )
-        WHEN 'ranged_weapon' THEN (
-            SELECT
-                damage
-            FROM
-                ranged_weapons
-            WHERE
-                id = ci.item_id
-        )
-        ELSE NULL
-    END as damage
+    COALESCE(
+        CASE ci.item_type
+            WHEN 'weapon' THEN CAST(w.damage AS TEXT)
+            WHEN 'ranged_weapon' THEN CAST(rw.damage AS TEXT)
+            ELSE NULL
+        END,
+        NULL
+    ) as damage,
+    COALESCE(
+        CASE ci.item_type
+            WHEN 'weapon' THEN CAST(w.attacks_per_round AS TEXT)
+            WHEN 'ranged_weapon' THEN CAST(rw.rate_of_fire AS TEXT)
+            ELSE NULL
+        END,
+        NULL
+    ) as attacks_per_round
 FROM
     character_inventory ci
     LEFT JOIN equipment_slots es ON ci.equipment_slot_id = es.id
@@ -144,6 +141,7 @@ type GetCharacterInventoryRow struct {
 	ItemName             interface{}    `json:"item_name"`
 	ItemWeight           int64          `json:"item_weight"`
 	Damage               interface{}    `json:"damage"`
+	AttacksPerRound      interface{}    `json:"attacks_per_round"`
 }
 
 func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) ([]GetCharacterInventoryRow, error) {
@@ -170,6 +168,7 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 			&i.ItemName,
 			&i.ItemWeight,
 			&i.Damage,
+			&i.AttacksPerRound,
 		); err != nil {
 			return nil, err
 		}
