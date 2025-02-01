@@ -21,6 +21,10 @@ SELECT
         WHEN 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight,
+    CASE ci.item_type
+        WHEN 'armor' THEN a.movement_rate
+        ELSE NULL
+    END as movement_rate,
     COALESCE(
         CASE ci.item_type
             WHEN 'weapon' THEN CAST(w.damage AS TEXT)

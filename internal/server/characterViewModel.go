@@ -21,6 +21,21 @@ func interfaceToNullString(v interface{}) sql.NullString {
 	return sql.NullString{}
 }
 
+func interfaceToNullInt64(v interface{}) sql.NullInt64 {
+	if v == nil {
+		return sql.NullInt64{}
+	}
+	switch i := v.(type) {
+	case int64:
+		return sql.NullInt64{Int64: i, Valid: true}
+	case int:
+		return sql.NullInt64{Int64: int64(i), Valid: true}
+	case sql.NullInt64:
+		return i
+	}
+	return sql.NullInt64{}
+}
+
 // Represents a single item in a character's inventory
 type InventoryItem struct {
 	ID                   int64          `json:"id"`
@@ -35,6 +50,7 @@ type InventoryItem struct {
 	SlotName             sql.NullString `json:"slot_name"`
 	Damage               sql.NullString `json:"damage"`
 	AttacksPerRound      sql.NullString `json:"attacks_per_round"`
+	MovementRate         sql.NullInt64  `json:"movement_rate"`
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
@@ -221,6 +237,7 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 			SlotName:             item.SlotName,
 			Damage:               damage,
 			AttacksPerRound:      interfaceToNullString(item.AttacksPerRound),
+			MovementRate:         interfaceToNullInt64(item.MovementRate),
 			Notes:                item.Notes,
 			CreatedAt:            item.CreatedAt,
 			UpdatedAt:            item.UpdatedAt,

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -10,7 +9,9 @@ import (
 )
 
 func main() {
+	log.Println("Starting application...")
 
+	log.Println("Attempting to open database...")
 	db, err := database.OpenDB("./mordezzan.db")
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
@@ -18,8 +19,14 @@ func main() {
 	defer db.Close()
 	log.Println("Successfully connected to database!")
 
-	server := server.NewServer(db)
+	log.Println("Creating new server instance...")
+	srv := server.NewServer(db)
 
-	fmt.Println("Server starting on :8080...")
-	http.ListenAndServe(":8080", server.Routes())
+	log.Println("Setting up routes...")
+	handler := srv.Routes()
+
+	log.Println("Server starting on :8080...")
+	if err := http.ListenAndServe(":8080", handler); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }

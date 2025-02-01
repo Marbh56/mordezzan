@@ -31,17 +31,20 @@
     {{end}}
 
     <!-- Basic Stats -->
-    <div>
-        <h2>Hit Points</h2>
-        <div>{{.Character.CurrentHp}} / {{.Character.MaxHp}}</div>
-    </div>
+    <div class="basic-stats">
+        <div>
+            <h2>Hit Points</h2>
+            <div>{{.Character.CurrentHp}} / {{.Character.MaxHp}}</div>
+        </div>
 
-    <div class="character-xp">
-        <h2>Experience</h2>
-        <div class="xp-details">
-            <div>Current XP: {{.Character.ExperiencePoints}}</div>
-            <div>Next Level: {{.Character.NextLevelXP}}</div>
-            <div>XP Needed: {{.Character.XPNeeded}}</div>
+        <div>
+            <h2>Movement Rate</h2>
+            <div>
+                {{$moveRate := 40}} {{range .Character.EquippedItems}} {{if and
+                (eq .ItemType "armor") .MovementRate.Valid}} {{$moveRate =
+                .MovementRate.Int64}} {{end}} {{end}} {{$moveRate}} feet per
+                round {{if ne $moveRate 40}} (reduced by armor) {{end}}
+            </div>
         </div>
     </div>
 
@@ -385,6 +388,7 @@
             {{end}} {{end}}
         </div>
     </div>
+
     <!-- Inventory Section -->
     <div>
         <div>
