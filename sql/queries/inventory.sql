@@ -25,6 +25,14 @@ SELECT
         WHEN 'armor' THEN a.movement_rate
         ELSE NULL
     END as movement_rate,
+    CASE ci.item_type
+        WHEN 'armor' THEN a.armor_class
+        ELSE NULL
+    END as armor_class,
+    CASE ci.item_type
+        WHEN 'shield' THEN s.defense_bonus
+        ELSE NULL
+    END as defense_bonus,
     COALESCE(
         CASE ci.item_type
             WHEN 'weapon' THEN CAST(w.damage AS TEXT)
@@ -77,7 +85,16 @@ INSERT INTO
         notes
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?) RETURNING *;
+    (?, ?, ?, ?, ?, ?, ?) RETURNING id,
+    character_id,
+    item_type,
+    item_id,
+    quantity,
+    container_inventory_id,
+    equipment_slot_id,
+    notes,
+    created_at,
+    updated_at;
 
 -- name: GetItemFromInventory :one
 SELECT

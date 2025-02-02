@@ -83,13 +83,14 @@ func classGetsFighterBonus(class string) bool {
 
 // Complete character view model including inventory
 type CharacterViewModel struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	Name      string `json:"name"`
-	Class     string `json:"class"`
-	Level     int64  `json:"level"`
-	MaxHp     int64  `json:"max_hp"`
-	CurrentHp int64  `json:"current_hp"`
+	ID         int64  `json:"id"`
+	UserID     int64  `json:"user_id"`
+	Name       string `json:"name"`
+	Class      string `json:"class"`
+	Level      int64  `json:"level"`
+	MaxHp      int64  `json:"max_hp"`
+	CurrentHp  int64  `json:"current_hp"`
+	ArmorClass int    `json:"armor_class"`
 
 	// Ability scores with modifiers
 	Strength          int64                   `json:"strength"`
@@ -184,6 +185,9 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 		StrengthModifiers:     rules.CalculateStrengthModifiers(c.Strength),
 		DexterityModifiers:    rules.CalculateDexterityModifiers(c.Dexterity),
 		ConstitutionModifiers: rules.CalculateConstitutionModifiers(c.Constitution),
+		IntelligenceModifiers: rules.CalculateIntelligenceModifiers(c.Intelligence),
+		WisdomModifiers:       rules.CalculateWisdomModifiers(c.Wisdom),
+		CharismaModifiers:     rules.CalculateCharismaModifiers(c.Charisma),
 
 		// Initialize inventory containers
 		ContainerItems: make(map[int64][]InventoryItem),
@@ -206,6 +210,56 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 			break
 		}
 	}
+
+	// Calculate base AC
+	baseAC := 9
+	var armorAC int64
+	var shieldBonus int64
+
+	// Check equipped items for armor and shield
+	for _, item := range inventory {
+		if item.EquipmentSlotID.Valid {
+			switch item.ItemType {
+			case "armor":
+				// Get AC from armor
+				var ac sql.NullInt64
+				switch v := item.ArmorClass.(type) {
+				case int64:
+					ac = sql.NullInt64{Int64: v, Valid: true}
+				case sql.NullInt64:
+					ac = v
+				}
+				if ac.Valid {
+					armorAC = ac.Int64
+				}
+			case "shield":
+				// Get defense bonus from shield
+				var bonus sql.NullInt64
+				switch v := item.DefenseBonus.(type) {
+				case int64:
+					bonus = sql.NullInt64{Int64: v, Valid: true}
+				case sql.NullInt64:
+					bonus = v
+				}
+				if bonus.Valid {
+					shieldBonus = bonus.Int64
+				}
+			}
+		}
+	}
+
+	// If armor is equipped, use its AC instead of base AC
+	if armorAC > 0 {
+		baseAC = int(armorAC)
+	}
+
+	// Apply shield bonus if any
+	totalAC := baseAC - int(shieldBonus)
+
+	// Apply Dexterity modifier
+	totalAC -= vm.DexterityModifiers.DefenseAdj
+
+	vm.ArmorClass = totalAC
 
 	// Initialize inventory stats with encumbrance thresholds
 	encumbranceThresholds := rules.CalculateEncumbranceThresholds(c.Strength, c.Constitution)

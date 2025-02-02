@@ -23,7 +23,16 @@ INSERT INTO
         notes
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?) RETURNING id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at
+    (?, ?, ?, ?, ?, ?, ?) RETURNING id,
+    character_id,
+    item_type,
+    item_id,
+    quantity,
+    container_inventory_id,
+    equipment_slot_id,
+    notes,
+    created_at,
+    updated_at
 `
 
 type AddItemToInventoryParams struct {
@@ -89,6 +98,14 @@ SELECT
         WHEN 'armor' THEN a.movement_rate
         ELSE NULL
     END as movement_rate,
+    CASE ci.item_type
+        WHEN 'armor' THEN a.armor_class
+        ELSE NULL
+    END as armor_class,
+    CASE ci.item_type
+        WHEN 'shield' THEN s.defense_bonus
+        ELSE NULL
+    END as defense_bonus,
     COALESCE(
         CASE ci.item_type
             WHEN 'weapon' THEN CAST(w.damage AS TEXT)
@@ -145,6 +162,8 @@ type GetCharacterInventoryRow struct {
 	ItemName             interface{}    `json:"item_name"`
 	ItemWeight           int64          `json:"item_weight"`
 	MovementRate         interface{}    `json:"movement_rate"`
+	ArmorClass           interface{}    `json:"armor_class"`
+	DefenseBonus         interface{}    `json:"defense_bonus"`
 	Damage               interface{}    `json:"damage"`
 	AttacksPerRound      interface{}    `json:"attacks_per_round"`
 }
@@ -173,6 +192,8 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 			&i.ItemName,
 			&i.ItemWeight,
 			&i.MovementRate,
+			&i.ArmorClass,
+			&i.DefenseBonus,
 			&i.Damage,
 			&i.AttacksPerRound,
 		); err != nil {

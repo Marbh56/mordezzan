@@ -48,6 +48,26 @@
         </div>
     </div>
 
+    <div>
+        <h2>Armor Class</h2>
+        <div class="ac-details">
+            <p><strong>Total AC:</strong> {{.Character.ArmorClass}}</p>
+            {{if .Character.DexterityModifiers.DefenseAdj}}
+            <p>
+                <strong>DEX Modifier:</strong> {{if ge
+                .Character.DexterityModifiers.DefenseAdj
+                0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}
+            </p>
+            {{end}}
+            <!-- Display equipped armor and shield if any -->
+            {{range .Character.EquippedItems}} {{if eq .ItemType "armor"}}
+            <p><strong>Armor:</strong> {{.ItemName}}</p>
+            {{end}} {{if eq .ItemType "shield"}}
+            <p><strong>Shield:</strong> {{.ItemName}}</p>
+            {{end}} {{end}}
+        </div>
+    </div>
+
     <!-- Ability Scores -->
     <div>
         <h2>Ability Scores</h2>
