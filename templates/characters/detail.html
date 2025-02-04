@@ -410,14 +410,7 @@
     </div>
 
     <!-- Inventory Section -->
-    <div>
-        <div>
-            <h2>Inventory</h2>
-            <a href="/characters/inventory/add?character_id={{.Character.ID}}"
-                >Add Item</a
-            >
-        </div>
-
+    {{template "inventory" .}}
         <!-- Encumbrance Information -->
         <div>
             <h3>Encumbrance Status</h3>

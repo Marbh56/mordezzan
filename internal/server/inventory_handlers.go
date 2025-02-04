@@ -357,3 +357,74 @@ func isEquippableType(itemType string) bool {
 	}
 	return equippableTypes[itemType]
 }
+
+func (s *Server) HandleRemoveInventoryItem(w http.ResponseWriter, r *http.Request) {
+	// Only allow POST method
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse form values
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Get required parameters
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	itemID, err := strconv.ParseInt(r.Form.Get("item_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify character ownership
+	queries := db.New(s.db)
+	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		log.Printf("Error verifying character ownership: %v", err)
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify item belongs to character
+	item, err := queries.GetItemFromInventory(r.Context(), db.GetItemFromInventoryParams{
+		ID:          itemID,
+		CharacterID: characterID,
+	})
+	if err != nil {
+		log.Printf("Error verifying item ownership: %v", err)
+		http.Error(w, "Item not found", http.StatusNotFound)
+		return
+	}
+
+	// Remove item from inventory
+	err = queries.RemoveItemFromInventory(r.Context(), db.RemoveItemFromInventoryParams{
+		ID:          item.ID,
+		CharacterID: characterID,
+	})
+	if err != nil {
+		log.Printf("Error removing item from inventory: %v", err)
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error removing item", characterID), http.StatusSeeOther)
+		return
+	}
+
+	// Redirect back to character detail page with success message
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item removed successfully", characterID), http.StatusSeeOther)
+}

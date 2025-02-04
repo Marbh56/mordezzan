@@ -46,7 +46,7 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 
 	viewModel := NewCharacterViewModel(character, inventory)
 
-	// Create a function map and add our seq function
+	// Create a function map and add our functions
 	funcMap := template.FuncMap{
 		"seq": func(start, end int) []int {
 			s := make([]int, end-start+1)
@@ -102,31 +102,69 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return x
 		},
+		"formatDateTime": func(t time.Time) string {
+			return t.Format("January 2, 2006 3:04 PM")
+		},
+		"eq": func(a, b interface{}) bool {
+			return a == b
+		},
+		"formatModifier": func(mod int) string {
+			if mod > 0 {
+				return "+" + strconv.Itoa(mod)
+			}
+			return strconv.Itoa(mod)
+		},
+		// Add the dict function here:
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
 	}
 
-	// Initialize template with the function map
-	tmpl := template.New("base.html").Funcs(funcMap)
-	// Parse the templates
-	tmpl, err = tmpl.ParseFiles(
+	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
 		"templates/layout/base.html",
+		"templates/layout/navbar.html",
 		"templates/characters/detail.html",
+		"templates/characters/_inventory.html",
 	)
+
 	if err != nil {
 		log.Printf("Template parsing error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	// Get weapon masteries if character is a fighter
+	var weaponMasteries []db.GetCharacterWeaponMasteriesRow
+	if character.Class == "Fighter" {
+		weaponMasteries, err = queries.GetCharacterWeaponMasteries(r.Context(), character.ID)
+		if err != nil {
+			log.Printf("Error fetching weapon masteries: %v", err)
+		}
+	}
+
 	data := struct {
 		IsAuthenticated bool
 		Username        string
 		Character       CharacterViewModel
+		WeaponMasteries []db.GetCharacterWeaponMasteriesRow
 		FlashMessage    string
 		CurrentYear     int
 	}{
 		IsAuthenticated: true,
 		Username:        user.Username,
 		Character:       viewModel,
+		WeaponMasteries: weaponMasteries,
 		FlashMessage:    r.URL.Query().Get("message"),
 		CurrentYear:     time.Now().Year(),
 	}

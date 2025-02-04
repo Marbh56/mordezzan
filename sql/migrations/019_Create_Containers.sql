@@ -11,5 +11,15 @@ CREATE TABLE containers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE container_allowed_types (
+    container_id INTEGER NOT NULL,
+    item_type TEXT NOT NULL,
+    ammo_type TEXT,
+    FOREIGN KEY (container_id) REFERENCES containers (id) ON DELETE CASCADE,
+    PRIMARY KEY (container_id, item_type)
+);
+
 -- +goose Down
+DROP TABLE IF EXISTS container_allowed_types;
+
 DROP TABLE IF EXISTS containers;
