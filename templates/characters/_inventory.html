@@ -12,15 +12,44 @@
     <!-- Equipment Grid -->
     <div class="equipment-section">
         <h3>Equipped Items</h3>
-        <div class="equipment-grid">
-            <!-- Equipment Slots -->
-            <div class="equipment-slot">
-                <div class="slot-label">Head</div>
-                <div class="slot-content">
-                    {{$found := false}} {{range .Character.EquippedItems}} {{if
-                    eq .SlotName.String "head"}} {{$found = true}}
-                    <div class="equipped-item">
-                        <span class="item-name">{{.ItemName}}</span>
+
+        <!-- Weapons Section -->
+        <div class="equipped-section weapons-section">
+            <h4>Weapons</h4>
+            <div class="weapons-grid">
+                {{range .Character.EquippedItems}} {{if or (eq .ItemType
+                "weapon") (eq .ItemType "ranged_weapon")}}
+                <div class="weapon-entry">
+                    <h5>{{.ItemName}}</h5>
+                    <div class="weapon-details">
+                        {{if .Damage.Valid}}
+                        <p>
+                            <strong>Damage:</strong> {{.Damage.String}} {{if eq
+                            .ItemType "weapon"}} {{with
+                            $.Character.StrengthModifiers}} {{if gt .DamageMod
+                            0}}+{{.DamageMod}}{{end}} {{if lt .DamageMod
+                            0}}{{.DamageMod}}{{end}} {{end}} {{end}}
+                        </p>
+                        {{end}}
+
+                        <p>
+                            <strong>To Hit:</strong>
+                            {{if eq .ItemType "weapon"}} {{with
+                            $.Character.StrengthModifiers}} {{if gt .AttackMod
+                            0}}+{{.AttackMod}}{{end}} {{if lt .AttackMod
+                            0}}{{.AttackMod}}{{end}} {{end}} {{else}} {{with
+                            $.Character.DexterityModifiers}} {{if gt .AttackMod
+                            0}}+{{.AttackMod}}{{end}} {{if lt .AttackMod
+                            0}}{{.AttackMod}}{{end}} {{end}} {{end}}
+                        </p>
+
+                        {{if .AttacksPerRound.Valid}}
+                        <p>
+                            <strong>Attacks per Round:</strong>
+                            {{.AttacksPerRound.String}}
+                        </p>
+                        {{end}}
+
                         <form
                             action="/characters/inventory/remove"
                             method="POST"
@@ -41,104 +70,95 @@
                             </button>
                         </form>
                     </div>
-                    {{end}} {{end}} {{if not $found}}
-                    <div class="empty-slot">Empty</div>
-                    {{end}}
                 </div>
+                {{end}} {{end}}
             </div>
+        </div>
 
-            <!-- Other slots following the same pattern -->
+        <!-- Armor Section -->
+        <div class="equipped-section armor-section">
+            <h4>Armor & Shields</h4>
+            <div class="armor-grid">
+                {{range .Character.EquippedItems}} {{if or (eq .ItemType
+                "armor") (eq .ItemType "shield")}}
+                <div class="armor-entry">
+                    <h5>{{.ItemName}}</h5>
+                    <div class="armor-details">
+                        {{if eq .ItemType "armor"}} {{if .MovementRate.Valid}}
+                        <p>
+                            <strong>Movement Rate:</strong>
+                            {{.MovementRate.Int64}} ft
+                        </p>
+                        {{end}} {{end}} {{if eq .ItemType "shield"}}
+                        <p>
+                            <strong>Defense Bonus:</strong> +{{.DefenseBonus}}
+                        </p>
+                        {{end}}
+                        <p><strong>Weight:</strong> {{.ItemWeight}} lbs</p>
 
-            <!-- Hands Section -->
-            <div class="equipment-slot hands-section">
-                <div class="slot-label">Hands</div>
-                <div class="hands-grid">
-                    <!-- Right Hand -->
-                    <div class="hand-slot">
-                        <div class="sub-slot-label">Right Hand</div>
-                        <div class="slot-content">
-                            {{$found := false}} {{range
-                            .Character.EquippedItems}} {{if eq .SlotName.String
-                            "right_hand"}} {{$found = true}}
-                            <div class="equipped-item">
-                                <span class="item-name">{{.ItemName}}</span>
-                                {{if .Damage.Valid}}
-                                <span class="item-property"
-                                    >Damage: {{.Damage.String}}</span
-                                >
-                                {{end}}
-                                <form
-                                    action="/characters/inventory/remove"
-                                    method="POST"
-                                    class="inline-form"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="character_id"
-                                        value="{{$.Character.ID}}"
-                                    />
-                                    <input
-                                        type="hidden"
-                                        name="item_id"
-                                        value="{{.ID}}"
-                                    />
-                                    <button
-                                        type="submit"
-                                        class="unequip-button"
-                                    >
-                                        Unequip
-                                    </button>
-                                </form>
-                            </div>
-                            {{end}} {{end}} {{if not $found}}
-                            <div class="empty-slot">Empty</div>
-                            {{end}}
-                        </div>
-                    </div>
-
-                    <!-- Left Hand -->
-                    <div class="hand-slot">
-                        <div class="sub-slot-label">Left Hand</div>
-                        <div class="slot-content">
-                            {{$found := false}} {{range
-                            .Character.EquippedItems}} {{if eq .SlotName.String
-                            "left_hand"}} {{$found = true}}
-                            <div class="equipped-item">
-                                <span class="item-name">{{.ItemName}}</span>
-                                {{if .Damage.Valid}}
-                                <span class="item-property"
-                                    >Damage: {{.Damage.String}}</span
-                                >
-                                {{end}}
-                                <form
-                                    action="/characters/inventory/remove"
-                                    method="POST"
-                                    class="inline-form"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="character_id"
-                                        value="{{$.Character.ID}}"
-                                    />
-                                    <input
-                                        type="hidden"
-                                        name="item_id"
-                                        value="{{.ID}}"
-                                    />
-                                    <button
-                                        type="submit"
-                                        class="unequip-button"
-                                    >
-                                        Unequip
-                                    </button>
-                                </form>
-                            </div>
-                            {{end}} {{end}} {{if not $found}}
-                            <div class="empty-slot">Empty</div>
-                            {{end}}
-                        </div>
+                        <form
+                            action="/characters/inventory/remove"
+                            method="POST"
+                            class="inline-form"
+                        >
+                            <input
+                                type="hidden"
+                                name="character_id"
+                                value="{{$.Character.ID}}"
+                            />
+                            <input
+                                type="hidden"
+                                name="item_id"
+                                value="{{.ID}}"
+                            />
+                            <button type="submit" class="unequip-button">
+                                Unequip
+                            </button>
+                        </form>
                     </div>
                 </div>
+                {{end}} {{end}}
+            </div>
+        </div>
+
+        <!-- Other Equipment Section -->
+        <div class="equipped-section other-section">
+            <h4>Other Equipment</h4>
+            <div class="other-grid">
+                {{range .Character.EquippedItems}} {{if and (ne .ItemType
+                "weapon") (ne .ItemType "ranged_weapon") (ne .ItemType "armor")
+                (ne .ItemType "shield")}}
+                <div class="equipment-entry">
+                    <h5>{{.ItemName}}</h5>
+                    <div class="equipment-details">
+                        <p><strong>Slot:</strong> {{.SlotName.String}}</p>
+                        {{if .Notes.Valid}}
+                        <p><strong>Notes:</strong> {{.Notes.String}}</p>
+                        {{end}}
+                        <p><strong>Weight:</strong> {{.ItemWeight}} lbs</p>
+
+                        <form
+                            action="/characters/inventory/remove"
+                            method="POST"
+                            class="inline-form"
+                        >
+                            <input
+                                type="hidden"
+                                name="character_id"
+                                value="{{$.Character.ID}}"
+                            />
+                            <input
+                                type="hidden"
+                                name="item_id"
+                                value="{{.ID}}"
+                            />
+                            <button type="submit" class="unequip-button">
+                                Unequip
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {{end}} {{end}}
             </div>
         </div>
     </div>
