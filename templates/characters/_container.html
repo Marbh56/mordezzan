@@ -1,0 +1,74 @@
+{{define "container"}}
+<div class="container-section">
+    <div class="container-header">
+        <h4>{{.ItemName}}</h4>
+        {{with (index $.Character.ContainerItems .ID)}}
+        <div class="container-stats">
+            <!-- Weight info -->
+            <div class="weight-info">
+                Current Weight: {{$totalWeight := 0}} {{range .}} {{$totalWeight
+                = add $totalWeight (mul .ItemWeight .Quantity)}} {{end}}
+                {{$totalWeight}} lbs
+            </div>
+
+            <!-- Add/Remove items -->
+            <div class="container-actions">
+                <a
+                    href="/characters/inventory/add?character_id={{$.Character.ID}}&container_id={{.ID}}"
+                    class="button"
+                >
+                    Add Item
+                </a>
+            </div>
+        </div>
+
+        <!-- Container contents -->
+        {{if .}}
+        <div class="container-contents">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Weight</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .}}
+                    <tr>
+                        <td>{{.ItemName}}</td>
+                        <td>{{.Quantity}}</td>
+                        <td>{{mul .ItemWeight .Quantity}} lbs</td>
+                        <td>
+                            <form
+                                action="/characters/inventory/remove"
+                                method="POST"
+                                style="display: inline"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="character_id"
+                                    value="{{$.Character.ID}}"
+                                />
+                                <input
+                                    type="hidden"
+                                    name="item_id"
+                                    value="{{.ID}}"
+                                />
+                                <button type="submit" class="remove-button">
+                                    Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <p class="empty-container">Container is empty</p>
+        {{end}} {{end}}
+    </div>
+</div>
+{{end}}

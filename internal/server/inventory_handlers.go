@@ -162,45 +162,55 @@ func (s *Server) handleAddItemSubmission(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Log form values for debugging
-	log.Printf("Form values: %v", r.Form)
-
-	// Validate required fields
+	// Parse basic item info
 	itemType := r.Form.Get("item_type")
-	if itemType == "" {
-		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Item type is required", characterID), http.StatusSeeOther)
-		return
-	}
-
-	// Validate required fields
-	itemType = r.Form.Get("item_type")
-	if itemType == "" {
-		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Item type is required", characterID), http.StatusSeeOther)
-		return
-	}
-
 	itemID, err := strconv.ParseInt(r.Form.Get("item_id"), 10, 64)
-	if err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Invalid item ID", characterID), http.StatusSeeOther)
-		return
-	}
-
 	quantity, err := strconv.ParseInt(r.Form.Get("quantity"), 10, 64)
 	if err != nil || quantity < 1 {
 		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Invalid quantity", characterID), http.StatusSeeOther)
 		return
 	}
 
-	// Parse optional fields
+	// Handle container
 	var containerID sql.NullInt64
 	if contID := r.Form.Get("container_inventory_id"); contID != "" {
 		id, err := strconv.ParseInt(contID, 10, 64)
 		if err == nil {
 			containerID.Int64 = id
 			containerID.Valid = true
+
+			// Get item weight based on type
+			var itemWeight int64
+			switch itemType {
+			case "equipment":
+				err = s.db.QueryRowContext(r.Context(),
+					"SELECT COALESCE(weight, 0) as weight FROM equipment WHERE id = ?",
+					itemID).Scan(&itemWeight)
+			case "weapon":
+				err = s.db.QueryRowContext(r.Context(),
+					"SELECT weight FROM weapons WHERE id = ?",
+					itemID).Scan(&itemWeight)
+			case "armor":
+				err = s.db.QueryRowContext(r.Context(),
+					"SELECT weight FROM armor WHERE id = ?",
+					itemID).Scan(&itemWeight)
+			}
+
+			if err != nil {
+				log.Printf("Error getting item weight: %v", err)
+				http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Error validating container capacity", characterID), http.StatusSeeOther)
+				return
+			}
+
+			// Validate container capacity
+			if err := s.validateContainerCapacity(r.Context(), containerID.Int64, characterID, itemWeight, quantity); err != nil {
+				http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=%s", characterID, err.Error()), http.StatusSeeOther)
+				return
+			}
 		}
 	}
 
+	// Continue with equipment slot logic
 	var equipmentSlotID sql.NullInt64
 	if slotID := r.Form.Get("equipment_slot_id"); slotID != "" {
 		id, err := strconv.ParseInt(slotID, 10, 64)
@@ -210,13 +220,14 @@ func (s *Server) handleAddItemSubmission(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
+	// Add notes if any
 	var notes sql.NullString
 	if noteText := r.Form.Get("notes"); noteText != "" {
 		notes.String = noteText
 		notes.Valid = true
 	}
 
-	// Add item to inventory
+	// Add the item
 	queries := db.New(s.db)
 	_, err = queries.AddItemToInventory(r.Context(), db.AddItemToInventoryParams{
 		CharacterID:          characterID,
@@ -234,7 +245,6 @@ func (s *Server) handleAddItemSubmission(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Redirect back to character detail with success message
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item added successfully", characterID), http.StatusSeeOther)
 }
 
