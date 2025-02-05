@@ -13,10 +13,34 @@ INSERT INTO
         intelligence,
         wisdom,
         charisma,
-        experience_points
+        experience_points,
+        platinum_pieces,
+        gold_pieces,
+        electrum_pieces,
+        silver_pieces,
+        copper_pieces
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+    (
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?
+    ) RETURNING *;
 
 -- name: GetCharacter :one
 SELECT
@@ -54,6 +78,11 @@ SET
     wisdom = ?,
     charisma = ?,
     experience_points = ?,
+    platinum_pieces = ?,
+    gold_pieces = ?,
+    electrum_pieces = ?,
+    silver_pieces = ?,
+    copper_pieces = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?

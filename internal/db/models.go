@@ -49,6 +49,11 @@ type Character struct {
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	ExperiencePoints int64     `json:"experience_points"`
+	PlatinumPieces   int64     `json:"platinum_pieces"`
+	GoldPieces       int64     `json:"gold_pieces"`
+	ElectrumPieces   int64     `json:"electrum_pieces"`
+	SilverPieces     int64     `json:"silver_pieces"`
+	CopperPieces     int64     `json:"copper_pieces"`
 }
 
 type CharacterInventory struct {
@@ -73,6 +78,13 @@ type CharacterWeaponMastery struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type Coin struct {
+	Denomination  string  `json:"denomination"`
+	Name          string  `json:"name"`
+	WeightPerCoin float64 `json:"weight_per_coin"`
+	BaseValue     int64   `json:"base_value"`
+}
+
 type Container struct {
 	ID             int64          `json:"id"`
 	Name           string         `json:"name"`
@@ -83,6 +95,18 @@ type Container struct {
 	Description    sql.NullString `json:"description"`
 	CreatedAt      sql.NullTime   `json:"created_at"`
 	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
+type ContainerAllowedType struct {
+	ContainerID int64          `json:"container_id"`
+	ItemType    string         `json:"item_type"`
+	AmmoType    sql.NullString `json:"ammo_type"`
+}
+
+type CurrencyConversionRate struct {
+	FromCurrency string `json:"from_currency"`
+	ToCurrency   string `json:"to_currency"`
+	Rate         int64  `json:"rate"`
 }
 
 type Equipment struct {

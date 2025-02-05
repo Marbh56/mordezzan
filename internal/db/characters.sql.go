@@ -24,10 +24,34 @@ INSERT INTO
         intelligence,
         wisdom,
         charisma,
-        experience_points
+        experience_points,
+        platinum_pieces,
+        gold_pieces,
+        electrum_pieces,
+        silver_pieces,
+        copper_pieces
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
+    (
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?
+    ) RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points, platinum_pieces, gold_pieces, electrum_pieces, silver_pieces, copper_pieces
 `
 
 type CreateCharacterParams struct {
@@ -44,6 +68,11 @@ type CreateCharacterParams struct {
 	Wisdom           int64  `json:"wisdom"`
 	Charisma         int64  `json:"charisma"`
 	ExperiencePoints int64  `json:"experience_points"`
+	PlatinumPieces   int64  `json:"platinum_pieces"`
+	GoldPieces       int64  `json:"gold_pieces"`
+	ElectrumPieces   int64  `json:"electrum_pieces"`
+	SilverPieces     int64  `json:"silver_pieces"`
+	CopperPieces     int64  `json:"copper_pieces"`
 }
 
 func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams) (Character, error) {
@@ -61,6 +90,11 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		arg.Wisdom,
 		arg.Charisma,
 		arg.ExperiencePoints,
+		arg.PlatinumPieces,
+		arg.GoldPieces,
+		arg.ElectrumPieces,
+		arg.SilverPieces,
+		arg.CopperPieces,
 	)
 	var i Character
 	err := row.Scan(
@@ -80,6 +114,11 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExperiencePoints,
+		&i.PlatinumPieces,
+		&i.GoldPieces,
+		&i.ElectrumPieces,
+		&i.SilverPieces,
+		&i.CopperPieces,
 	)
 	return i, err
 }
@@ -103,7 +142,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacter = `-- name: GetCharacter :one
 SELECT
-    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
+    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points, platinum_pieces, gold_pieces, electrum_pieces, silver_pieces, copper_pieces
 FROM
     characters
 WHERE
@@ -138,13 +177,18 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExperiencePoints,
+		&i.PlatinumPieces,
+		&i.GoldPieces,
+		&i.ElectrumPieces,
+		&i.SilverPieces,
+		&i.CopperPieces,
 	)
 	return i, err
 }
 
 const listCharactersByUser = `-- name: ListCharactersByUser :many
 SELECT
-    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
+    id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points, platinum_pieces, gold_pieces, electrum_pieces, silver_pieces, copper_pieces
 FROM
     characters
 WHERE
@@ -179,6 +223,11 @@ func (q *Queries) ListCharactersByUser(ctx context.Context, userID int64) ([]Cha
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ExperiencePoints,
+			&i.PlatinumPieces,
+			&i.GoldPieces,
+			&i.ElectrumPieces,
+			&i.SilverPieces,
+			&i.CopperPieces,
 		); err != nil {
 			return nil, err
 		}
@@ -208,10 +257,15 @@ SET
     wisdom = ?,
     charisma = ?,
     experience_points = ?,
+    platinum_pieces = ?,
+    gold_pieces = ?,
+    electrum_pieces = ?,
+    silver_pieces = ?,
+    copper_pieces = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?
-    AND user_id = ? RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points
+    AND user_id = ? RETURNING id, user_id, name, class, level, max_hp, current_hp, strength, dexterity, constitution, intelligence, wisdom, charisma, created_at, updated_at, experience_points, platinum_pieces, gold_pieces, electrum_pieces, silver_pieces, copper_pieces
 `
 
 type UpdateCharacterParams struct {
@@ -227,6 +281,11 @@ type UpdateCharacterParams struct {
 	Wisdom           int64  `json:"wisdom"`
 	Charisma         int64  `json:"charisma"`
 	ExperiencePoints int64  `json:"experience_points"`
+	PlatinumPieces   int64  `json:"platinum_pieces"`
+	GoldPieces       int64  `json:"gold_pieces"`
+	ElectrumPieces   int64  `json:"electrum_pieces"`
+	SilverPieces     int64  `json:"silver_pieces"`
+	CopperPieces     int64  `json:"copper_pieces"`
 	ID               int64  `json:"id"`
 	UserID           int64  `json:"user_id"`
 }
@@ -245,6 +304,11 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		arg.Wisdom,
 		arg.Charisma,
 		arg.ExperiencePoints,
+		arg.PlatinumPieces,
+		arg.GoldPieces,
+		arg.ElectrumPieces,
+		arg.SilverPieces,
+		arg.CopperPieces,
 		arg.ID,
 		arg.UserID,
 	)
@@ -266,6 +330,11 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExperiencePoints,
+		&i.PlatinumPieces,
+		&i.GoldPieces,
+		&i.ElectrumPieces,
+		&i.SilverPieces,
+		&i.CopperPieces,
 	)
 	return i, err
 }

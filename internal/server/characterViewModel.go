@@ -6,6 +6,7 @@ import (
 
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/rules"
+	"github.com/marbh56/mordezzan/internal/rules/currency"
 )
 
 func interfaceToNullString(v interface{}) sql.NullString {
@@ -62,10 +63,11 @@ type InventoryStats struct {
 	EquippedWeight      int    `json:"equipped_weight"`
 	CarriedWeight       int    `json:"carried_weight"`
 	ContainersWeight    int    `json:"containers_weight"`
+	CoinWeight          int    `json:"coin_weight"`
 	BaseEncumbered      int    `json:"base_encumbered"`
 	BaseHeavyEncumbered int    `json:"base_heavy_encumbered"`
 	MaximumCapacity     int    `json:"maximum_capacity"`
-	EncumbranceLevel    string `json:"encumbrance_level"` // "None", "Encumbered", "Heavy", "Over"
+	EncumbranceLevel    string `json:"encumbrance_level"`
 }
 
 func classGetsFighterBonus(class string) bool {
@@ -122,7 +124,13 @@ type CharacterViewModel struct {
 
 	// Calculated inventory statistics
 	InventoryStats InventoryStats `json:"inventory_stats"`
+	PlatinumPieces int64
+	GoldPieces     int64
+	ElectrumPieces int64
+	SilverPieces   int64
+	CopperPieces   int64
 
+	// Experience points and level progression
 	ExperiencePoints int64 `json:"experience_points"`
 	NextLevelXP      int64 `json:"next_level_xp"`
 	XPNeeded         int64 `json:"xp_needed"`
@@ -268,6 +276,21 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 		BaseHeavyEncumbered: encumbranceThresholds.BaseHeavyEncumbered,
 		MaximumCapacity:     encumbranceThresholds.MaximumCapacity,
 	}
+
+	// Add coin weight to total weight
+	coinage := currency.Purse{
+		PlatinumPieces: c.PlatinumPieces,
+		GoldPieces:     c.GoldPieces,
+		ElectrumPieces: c.ElectrumPieces,
+		SilverPieces:   c.SilverPieces,
+		CopperPieces:   c.CopperPieces,
+	}
+	vm.PlatinumPieces = c.PlatinumPieces
+	vm.GoldPieces = c.GoldPieces
+	vm.ElectrumPieces = c.ElectrumPieces
+	vm.SilverPieces = c.SilverPieces
+	vm.CopperPieces = c.CopperPieces
+	vm.InventoryStats.CoinWeight = int(currency.GetTotalWeight(&coinage))
 
 	for _, item := range inventory {
 		damage := sql.NullString{}

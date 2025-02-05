@@ -168,6 +168,12 @@
         <h3>Encumbrance Status</h3>
         <div class="encumbrance-details">
             <p>Total Weight: {{.Character.InventoryStats.TotalWeight}} lbs</p>
+            <p>Coin Weight: {{.Character.InventoryStats.CoinWeight}} lbs</p>
+            <p>
+                Coins: PP:{{.Character.PlatinumPieces}}
+                GP:{{.Character.GoldPieces}} EP:{{.Character.ElectrumPieces}}
+                SP:{{.Character.SilverPieces}} CP:{{.Character.CopperPieces}}
+            </p>
             <div
                 class="encumbrance-status {{.Character.InventoryStats.EncumbranceLevel}}"
             >
