@@ -76,6 +76,26 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return 0
 		},
+		"mul": func(a, b interface{}) int64 {
+			// Handle multiplication between different numeric types
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v * int64(w)
+				case int64:
+					return v * w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) * w
+				case int:
+					return int64(v * w)
+				}
+			}
+			return 0
+		},
 		"sub": func(a, b interface{}) int64 {
 			// Handle int64 - int
 			switch v := a.(type) {
