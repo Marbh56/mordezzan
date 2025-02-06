@@ -256,9 +256,13 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
 		"templates/layout/base.html",
 		"templates/layout/navbar.html",
-		"templates/characters/detail.html",
+		"templates/characters/details.html",
 		"templates/characters/_inventory.html",
-		"templates/characters/_xp.html",
+		"templates/characters/_ability_scores.html",
+		"templates/characters/_class_features.html",
+		"templates/characters/_combat_stats.html",
+		"templates/characters/_saving_throws.html",
+		"templates/characters/_character_header.html",
 	)
 
 	if err != nil {

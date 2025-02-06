@@ -1,0 +1,141 @@
+{{define "ability_scores"}}
+<div class="ability-scores">
+    <h2>Ability Scores</h2>
+    <div class="ability-grid">
+        <div class="ability-section">
+            <h3>Strength: {{.Character.Strength}}</h3>
+            <ul>
+                <li>
+                    Attack (Melee): {{if ge
+                    .Character.StrengthModifiers.AttackMod
+                    0}}+{{end}}{{.Character.StrengthModifiers.AttackMod}}
+                </li>
+                <li>
+                    Damage: {{if ge .Character.StrengthModifiers.DamageMod
+                    0}}+{{end}}{{.Character.StrengthModifiers.DamageMod}}
+                </li>
+                <li>
+                    Test of Strength:
+                    {{.Character.StrengthModifiers.TestOfStrength}}
+                </li>
+                <li>
+                    Extraordinary Feat:
+                    {{.Character.StrengthModifiers.ExtraordinaryFeat}}%
+                </li>
+            </ul>
+        </div>
+
+        <div class="ability-section">
+            <h3>Dexterity: {{.Character.Dexterity}}</h3>
+            <ul>
+                <li>
+                    Attack (Missile): {{if ge
+                    .Character.DexterityModifiers.AttackMod
+                    0}}+{{end}}{{.Character.DexterityModifiers.AttackMod}}
+                </li>
+                <li>
+                    Defense: {{if ge .Character.DexterityModifiers.DefenseAdj
+                    0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}
+                </li>
+                <li>
+                    Test of Dexterity:
+                    {{.Character.DexterityModifiers.TestOfDexterity}}
+                </li>
+                <li>
+                    Extraordinary Feat:
+                    {{.Character.DexterityModifiers.ExtraordinaryFeat}}%
+                </li>
+            </ul>
+        </div>
+
+        <div class="ability-section">
+            <h3>Constitution: {{.Character.Constitution}}</h3>
+            <ul>
+                <li>
+                    Hit Points/Level: {{if ge
+                    .Character.ConstitutionModifiers.HitPointMod
+                    0}}+{{end}}{{.Character.ConstitutionModifiers.HitPointMod}}
+                </li>
+                <li>
+                    Poison/Radiation: {{if ge
+                    .Character.ConstitutionModifiers.PoisonRadMod
+                    0}}+{{end}}{{.Character.ConstitutionModifiers.PoisonRadMod}}
+                </li>
+                <li>
+                    Trauma Survival:
+                    {{.Character.ConstitutionModifiers.TraumaSurvival}}%
+                </li>
+                <li>
+                    Test of Constitution:
+                    {{.Character.ConstitutionModifiers.TestOfCon}}
+                </li>
+                <li>
+                    Extraordinary Feat:
+                    {{.Character.ConstitutionModifiers.ExtraordinaryFeat}}%
+                </li>
+            </ul>
+        </div>
+
+        <div class="ability-section">
+            <h3>Intelligence: {{.Character.Intelligence}}</h3>
+            <ul>
+                <li>
+                    Languages: {{.Character.IntelligenceModifiers.Languages}}
+                    additional
+                </li>
+                <li>
+                    Bonus Spell Level:
+                    {{.Character.IntelligenceModifiers.BonusSpellLevel}}
+                </li>
+                <li>
+                    Chance to Learn:
+                    {{.Character.IntelligenceModifiers.ChanceToLearn}}%
+                </li>
+                <li>
+                    Literate: {{if
+                    .Character.IntelligenceModifiers.IsLiterate}}Yes{{else}}No{{end}}
+                </li>
+            </ul>
+        </div>
+
+        <div class="ability-section">
+            <h3>Wisdom: {{.Character.Wisdom}}</h3>
+            <ul>
+                <li>
+                    Willpower Adjustment: {{if ge
+                    .Character.WisdomModifiers.WillpowerAdj
+                    0}}+{{end}}{{.Character.WisdomModifiers.WillpowerAdj}}
+                </li>
+                <li>
+                    Bonus Spell Level:
+                    {{.Character.WisdomModifiers.BonusSpellLevel}}
+                </li>
+                <li>
+                    Spell Learning Chance:
+                    {{.Character.WisdomModifiers.SpellLearningChance}}%
+                </li>
+            </ul>
+        </div>
+
+        <div class="ability-section">
+            <h3>Charisma: {{.Character.Charisma}}</h3>
+            <ul>
+                <li>
+                    Reaction/Loyalty Adjustment: {{if ge
+                    .Character.CharismaModifiers.ReactionLoyaltyAdj
+                    0}}+{{end}}{{.Character.CharismaModifiers.ReactionLoyaltyAdj}}
+                </li>
+                <li>
+                    Maximum Henchmen:
+                    {{.Character.CharismaModifiers.MaxHenchmen}}
+                </li>
+                <li>
+                    Undead Turning Adjustment: {{if ge
+                    .Character.CharismaModifiers.UndeadTurningAdj
+                    0}}+{{end}}{{.Character.CharismaModifiers.UndeadTurningAdj}}
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{{end}}
