@@ -168,12 +168,6 @@
         <h3>Encumbrance Status</h3>
         <div class="encumbrance-details">
             <p>Total Weight: {{.Character.InventoryStats.TotalWeight}} lbs</p>
-            <p>Coin Weight: {{.Character.InventoryStats.CoinWeight}} lbs</p>
-            <p>
-                Coins: PP:{{.Character.PlatinumPieces}}
-                GP:{{.Character.GoldPieces}} EP:{{.Character.ElectrumPieces}}
-                SP:{{.Character.SilverPieces}} CP:{{.Character.CopperPieces}}
-            </p>
             <div
                 class="encumbrance-status {{.Character.InventoryStats.EncumbranceLevel}}"
             >
@@ -196,145 +190,6 @@
         </div>
     </div>
 
-    <!-- Containers Section -->
-    <div class="containers-section">
-        <h3>Containers</h3>
-        {{range .Character.EquippedItems}} {{if eq .ItemType "container"}}
-        <div class="container-item">
-            <h4>{{.ItemName}} (Equipped)</h4>
-            {{with (index $.Character.ContainerItems .ID)}}
-            <div class="container-contents">
-                <!-- Container weight summary -->
-                <div class="container-stats">
-                    <p>
-                        Current Weight: {{$totalWeight := 0}} {{range .}}
-                        {{$totalWeight = add $totalWeight (mul .ItemWeight
-                        .Quantity)}} {{end}} {{$totalWeight}} lbs
-                    </p>
-                </div>
-
-                <!-- Container contents table -->
-                <table class="inventory-table">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Quantity</th>
-                            <th>Weight</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range .}}
-                        <tr>
-                            <td>{{.ItemName}}</td>
-                            <td>{{.Quantity}}</td>
-                            <td>{{mul .ItemWeight .Quantity}} lbs</td>
-                            <td>
-                                <form
-                                    action="/characters/inventory/remove"
-                                    method="POST"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="character_id"
-                                        value="{{$.Character.ID}}"
-                                    />
-                                    <input
-                                        type="hidden"
-                                        name="item_id"
-                                        value="{{.ID}}"
-                                    />
-                                    <button type="submit" class="remove-button">
-                                        Remove
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
-            </div>
-            {{else}}
-            <p>Container is empty</p>
-            {{end}}
-            <div class="container-actions">
-                <a
-                    href="/characters/inventory/add?character_id={{$.Character.ID}}&container_id={{.ID}}"
-                    class="button"
-                    >Add Item</a
-                >
-            </div>
-        </div>
-        {{end}} {{end}} {{range .Character.CarriedItems}} {{if eq .ItemType
-        "container"}}
-        <div class="container-item">
-            <h4>{{.ItemName}} (Carried)</h4>
-            {{with (index $.Character.ContainerItems .ID)}}
-            <div class="container-contents">
-                <!-- Container weight summary -->
-                <div class="container-stats">
-                    <p>
-                        Current Weight: {{$totalWeight := 0}} {{range .}}
-                        {{$totalWeight = add $totalWeight (mul .ItemWeight
-                        .Quantity)}} {{end}} {{$totalWeight}} lbs
-                    </p>
-                </div>
-
-                <!-- Container contents table -->
-                <table class="inventory-table">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Quantity</th>
-                            <th>Weight</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range .}}
-                        <tr>
-                            <td>{{.ItemName}}</td>
-                            <td>{{.Quantity}}</td>
-                            <td>{{mul .ItemWeight .Quantity}} lbs</td>
-                            <td>
-                                <form
-                                    action="/characters/inventory/remove"
-                                    method="POST"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="character_id"
-                                        value="{{$.Character.ID}}"
-                                    />
-                                    <input
-                                        type="hidden"
-                                        name="item_id"
-                                        value="{{.ID}}"
-                                    />
-                                    <button type="submit" class="remove-button">
-                                        Remove
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
-            </div>
-            {{else}}
-            <p>Container is empty</p>
-            {{end}}
-            <div class="container-actions">
-                <a
-                    href="/characters/inventory/add?character_id={{$.Character.ID}}&container_id={{.ID}}"
-                    class="button"
-                    >Add Item</a
-                >
-            </div>
-        </div>
-        {{end}} {{end}}
-    </div>
-
     <!-- Carried Items -->
     {{if .Character.CarriedItems}}
     <div class="carried-items">
@@ -355,7 +210,7 @@
                     <td>{{.ItemName}}</td>
                     <td>{{.ItemWeight}} lbs</td>
                     <td>{{.Quantity}}</td>
-                    <td>{{if .Notes}}{{.Notes.String}}{{end}}</td>
+                    <td>{{if .Notes.Valid}}{{.Notes.String}}{{end}}</td>
                     <td class="item-actions">
                         <form
                             action="/characters/inventory/remove"
@@ -383,5 +238,9 @@
         </table>
     </div>
     {{end}}
+
+    <!-- Container Items -->
+    {{range .Character.CarriedItems}} {{if eq .ItemType "container"}} {{template
+    "container" .}} {{end}} {{end}}
 </div>
 {{end}}

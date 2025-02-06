@@ -12,6 +12,102 @@ import (
 	"github.com/marbh56/mordezzan/internal/rules"
 )
 
+func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get the character to verify ownership and current XP
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		log.Printf("Error fetching character: %v", err)
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse XP change
+	xpChange, err := strconv.ParseInt(r.Form.Get("xp_change"), 10, 64)
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid XP value", characterID), http.StatusSeeOther)
+		return
+	}
+
+	newXP := character.ExperiencePoints + xpChange
+	if newXP < 0 {
+		newXP = 0
+	}
+
+	// Get class progression
+	progression := rules.GetClassProgression(character.Class)
+
+	// Calculate appropriate level for new XP
+	newLevel := progression.GetLevelForXP(newXP)
+
+	// Update character with new XP and level
+	updateParams := db.UpdateCharacterParams{
+		ID:               characterID,
+		UserID:           user.UserID,
+		Name:             character.Name,
+		Class:            character.Class,
+		Level:            newLevel, // Update level based on XP
+		MaxHp:            character.MaxHp,
+		CurrentHp:        character.CurrentHp,
+		Strength:         character.Strength,
+		Dexterity:        character.Dexterity,
+		Constitution:     character.Constitution,
+		Intelligence:     character.Intelligence,
+		Wisdom:           character.Wisdom,
+		Charisma:         character.Charisma,
+		ExperiencePoints: newXP,
+		PlatinumPieces:   character.PlatinumPieces,
+		GoldPieces:       character.GoldPieces,
+		ElectrumPieces:   character.ElectrumPieces,
+		SilverPieces:     character.SilverPieces,
+		CopperPieces:     character.CopperPieces,
+	}
+
+	_, err = queries.UpdateCharacter(r.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating character XP: %v", err)
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating XP", characterID), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=XP and level updated successfully", characterID), http.StatusSeeOther)
+}
+
+func calculateMinimumXPForLevel(class string, level int64) int64 {
+	progression := rules.GetClassProgression(class)
+	for _, levelInfo := range progression.Levels {
+		if levelInfo.Level == level {
+			return levelInfo.XPRequired
+		}
+	}
+	return 0
+}
+
 func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
@@ -96,6 +192,12 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return 0
 		},
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
 		"sub": func(a, b interface{}) int64 {
 			// Handle int64 - int
 			switch v := a.(type) {
@@ -156,6 +258,7 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		"templates/layout/navbar.html",
 		"templates/characters/detail.html",
 		"templates/characters/_inventory.html",
+		"templates/characters/_xp.html",
 	)
 
 	if err != nil {
@@ -339,6 +442,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 		return
 	}
 	params.Level = level
+
+	minimumXP := calculateMinimumXPForLevel(params.Class, level)
+	params.ExperiencePoints = minimumXP
 
 	// Parse base HP and constitution
 	baseHP, err := strconv.ParseInt(r.Form.Get("max_hp"), 10, 64)

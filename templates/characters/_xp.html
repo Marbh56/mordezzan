@@ -1,0 +1,34 @@
+{{define "xp"}}
+<div class="xp-section">
+    <h2>Experience Points</h2>
+    <div class="xp-details">
+        <p><strong>Level:</strong> {{.Level}}</p>
+        <p><strong>Current XP:</strong> {{.ExperiencePoints}}</p>
+        {{if gt .XPNeeded 0}}
+        <p><strong>XP Needed for Next Level:</strong> {{.XPNeeded}}</p>
+        <p><strong>Next Level at:</strong> {{.NextLevelXP}}</p>
+        {{else}}
+        <p>Maximum level reached</p>
+        {{end}}
+
+        <div class="xp-modification">
+            <form action="/characters/xp/update" method="POST" class="xp-form">
+                <input type="hidden" name="character_id" value="{{.ID}}" />
+                <div class="form-group">
+                    <label for="xp_change">Modify XP:</label>
+                    <input
+                        type="number"
+                        id="xp_change"
+                        name="xp_change"
+                        required
+                    />
+                    <p class="help-text">
+                        Use positive numbers to add XP, negative to subtract
+                    </p>
+                </div>
+                <button type="submit">Update XP</button>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
