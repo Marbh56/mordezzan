@@ -52,6 +52,7 @@ type InventoryItem struct {
 	Damage               sql.NullString `json:"damage"`
 	AttacksPerRound      sql.NullString `json:"attacks_per_round"`
 	MovementRate         sql.NullInt64  `json:"movement_rate"`
+	DefenseBonus         interface{}    `json:"defense_bonus"` // Add this line
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
@@ -315,6 +316,7 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 			Damage:               damage,
 			AttacksPerRound:      interfaceToNullString(item.AttacksPerRound),
 			MovementRate:         interfaceToNullInt64(item.MovementRate),
+			DefenseBonus:         item.DefenseBonus,
 			Notes:                item.Notes,
 			CreatedAt:            item.CreatedAt,
 			UpdatedAt:            item.UpdatedAt,
