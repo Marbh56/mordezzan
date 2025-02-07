@@ -5,51 +5,62 @@ Go 1.23 or higher
 SQLite 3
 Git
 
-Installation
+# Installation
 
-Clone the repository:
+## Clone the repository:
 
 ```bash
 git clone https://github.com/marbh56/mordezzan.git
 cd mordezzan
 ```
 
-Install dependencies:
+## Install dependencies:
 
 ```bash
 go mod download
 ```
 Set up the database:
 
-# Create a new SQLite database
+## Create a new SQLite database
 ```bash
 touch mordezzan.db
 ```
-# Run migrations (you'll need goose installed)
+
+## Run migrations (you'll need goose installed)
+
+```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
 goose -dir sql/migrations sqlite3 ./mordezzan.db up
+```
 
-Build the project:
+## Build the project:
 
-bashCopygo build -o mordezzan ./cmd/web
-Running the Server
+```bash
+go build -o mordezzan ./cmd/web
+```
 
-Start the server:
+# Running the Server
 
-Copy./mordezzan
+## Start the server:
+
+```bash
+./mordezzan
+```
 
 Access the web interface at http://localhost:8080
 
-Development
+# Development
 
-Database queries are managed using sqlc. After modifying SQL files, regenerate the Go code:
+## Database queries are managed using sqlc. After modifying SQL files, regenerate the Go code:
 
-bashCopy# Install sqlc
+# Install sqlc
+```bash
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-
-# Generate Go code
+```
+## Generate Go code
 sqlc generate
-Project Structure
+
+# Project Structure
 
 cmd/web/: Main application entry point
 internal/: Application code
@@ -64,7 +75,7 @@ sql/: SQL migrations and queries
 templates/: HTML templates
 static/: Static assets
 
-License
+# License
 This project is dual-licensed:
 
 Source code: MIT License

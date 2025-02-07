@@ -3,14 +3,107 @@ package server
 import (
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/rules"
 )
+
+func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.FormValue("character_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		log.Printf("Error fetching character: %v", err)
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	progression := rules.GetClassProgression(character.Class)
+	hitDice := progression.GetHitDice(character.Level)
+
+	parts := strings.Split(hitDice, "d")
+	if len(parts) != 2 {
+		http.Error(w, "Invalid hit dice format", http.StatusInternalServerError)
+		return
+	}
+
+	diceSize, err := strconv.Atoi(parts[1])
+	if err != nil {
+		log.Printf("Error parsing dice size: %v", err)
+		http.Error(w, "Invalid hit dice format", http.StatusInternalServerError)
+		return
+	}
+	// Roll just one die
+	total := rand.IntN(diceSize) + 1
+
+	// Add Constitution bonus
+	conMods := rules.CalculateConstitutionModifiers(character.Constitution)
+	total += conMods.HitPointMod
+
+	// Calculate new HP, not exceeding max
+	newHP := character.CurrentHp + int64(total)
+	if newHP > character.MaxHp {
+		newHP = character.MaxHp
+	}
+
+	// Update character
+	updateParams := db.UpdateCharacterParams{
+		ID:               characterID,
+		UserID:           user.UserID,
+		Name:             character.Name,
+		Class:            character.Class,
+		Level:            character.Level,
+		MaxHp:            character.MaxHp,
+		CurrentHp:        newHP,
+		Strength:         character.Strength,
+		Dexterity:        character.Dexterity,
+		Constitution:     character.Constitution,
+		Intelligence:     character.Intelligence,
+		Wisdom:           character.Wisdom,
+		Charisma:         character.Charisma,
+		ExperiencePoints: character.ExperiencePoints,
+		PlatinumPieces:   character.PlatinumPieces,
+		GoldPieces:       character.GoldPieces,
+		ElectrumPieces:   character.ElectrumPieces,
+		SilverPieces:     character.SilverPieces,
+		CopperPieces:     character.CopperPieces,
+	}
+
+	_, err = queries.UpdateCharacter(r.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating character HP: %v", err)
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error during rest", characterID), http.StatusSeeOther)
+		return
+	}
+
+	message := fmt.Sprintf("Rest complete! Healed for %d HP", total)
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=%s", characterID, message), http.StatusSeeOther)
+}
 
 func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

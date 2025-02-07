@@ -36,6 +36,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/edit", s.AuthMiddleware(http.HandlerFunc(s.HandleCharacterEdit)))
 	mux.Handle("/characters/xp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateXP)))
 	mux.Handle("/characters/hp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateHP)))
+	mux.Handle("/characters/rest", s.AuthMiddleware(http.HandlerFunc(s.HandleRest)))
 
 	// Add the weapon mastery route
 	mux.Handle("/characters/masteries", s.AuthMiddleware(http.HandlerFunc(s.HandleWeaponMastery)))
