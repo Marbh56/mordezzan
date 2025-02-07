@@ -304,6 +304,86 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		log.Printf("Error fetching character: %v", err)
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	hpChange, err := strconv.ParseInt(r.Form.Get("hp_change"), 10, 64)
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid HP value", characterID), http.StatusSeeOther)
+		return
+	}
+
+	newHP := character.CurrentHp + hpChange
+	if newHP > character.MaxHp {
+		newHP = character.MaxHp
+	}
+	if newHP < 0 {
+		newHP = 0
+	}
+
+	updateParams := db.UpdateCharacterParams{
+		ID:               characterID,
+		UserID:           user.UserID,
+		Name:             character.Name,
+		Class:            character.Class,
+		Level:            character.Level,
+		MaxHp:            character.MaxHp,
+		CurrentHp:        newHP,
+		Strength:         character.Strength,
+		Dexterity:        character.Dexterity,
+		Constitution:     character.Constitution,
+		Intelligence:     character.Intelligence,
+		Wisdom:           character.Wisdom,
+		Charisma:         character.Charisma,
+		ExperiencePoints: character.ExperiencePoints,
+		PlatinumPieces:   character.PlatinumPieces,
+		GoldPieces:       character.GoldPieces,
+		ElectrumPieces:   character.ElectrumPieces,
+		SilverPieces:     character.SilverPieces,
+		CopperPieces:     character.CopperPieces,
+	}
+
+	_, err = queries.UpdateCharacter(r.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating character HP: %v", err)
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating HP", characterID), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d", characterID), http.StatusSeeOther)
+}
+
 func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
 	// Get user from context (set by AuthMiddleware)
 	user, ok := GetUserFromContext(r.Context())
