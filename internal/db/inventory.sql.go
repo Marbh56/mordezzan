@@ -45,7 +45,20 @@ type AddItemToInventoryParams struct {
 	Notes                sql.NullString `json:"notes"`
 }
 
-func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventoryParams) (CharacterInventory, error) {
+type AddItemToInventoryRow struct {
+	ID                   int64          `json:"id"`
+	CharacterID          int64          `json:"character_id"`
+	ItemType             string         `json:"item_type"`
+	ItemID               int64          `json:"item_id"`
+	Quantity             int64          `json:"quantity"`
+	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
+	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
+	Notes                sql.NullString `json:"notes"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventoryParams) (AddItemToInventoryRow, error) {
 	row := q.db.QueryRowContext(ctx, addItemToInventory,
 		arg.CharacterID,
 		arg.ItemType,
@@ -55,7 +68,7 @@ func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventory
 		arg.EquipmentSlotID,
 		arg.Notes,
 	)
-	var i CharacterInventory
+	var i AddItemToInventoryRow
 	err := row.Scan(
 		&i.ID,
 		&i.CharacterID,
@@ -73,7 +86,7 @@ func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventory
 
 const getCharacterInventory = `-- name: GetCharacterInventory :many
 SELECT
-    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at,
+    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at, ci.magical_weapon_id,
     es.name as slot_name,
     CASE ci.item_type
         WHEN 'equipment' THEN e.name
@@ -158,6 +171,7 @@ type GetCharacterInventoryRow struct {
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
+	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
 	SlotName             sql.NullString `json:"slot_name"`
 	ItemName             interface{}    `json:"item_name"`
 	ItemWeight           int64          `json:"item_weight"`
@@ -188,6 +202,7 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MagicalWeaponID,
 			&i.SlotName,
 			&i.ItemName,
 			&i.ItemWeight,
@@ -212,7 +227,7 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 
 const getContainerContents = `-- name: GetContainerContents :many
 SELECT
-    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at,
+    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at, ci.magical_weapon_id,
     CASE ci.item_type
         WHEN 'equipment' THEN e.name
         WHEN 'weapon' THEN w.name
@@ -271,6 +286,7 @@ type GetContainerContentsRow struct {
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
+	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
 	ItemName             interface{}    `json:"item_name"`
 	ItemWeight           int64          `json:"item_weight"`
 }
@@ -295,6 +311,7 @@ func (q *Queries) GetContainerContents(ctx context.Context, arg GetContainerCont
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MagicalWeaponID,
 			&i.ItemName,
 			&i.ItemWeight,
 		); err != nil {
@@ -313,7 +330,7 @@ func (q *Queries) GetContainerContents(ctx context.Context, arg GetContainerCont
 
 const getEquippedItems = `-- name: GetEquippedItems :many
 SELECT
-    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at,
+    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at, ci.magical_weapon_id,
     es.name as slot_name,
     CASE ci.item_type
         WHEN 'equipment' THEN e.name
@@ -369,6 +386,7 @@ type GetEquippedItemsRow struct {
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
+	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
 	SlotName             string         `json:"slot_name"`
 	ItemName             interface{}    `json:"item_name"`
 	ItemWeight           int64          `json:"item_weight"`
@@ -394,6 +412,7 @@ func (q *Queries) GetEquippedItems(ctx context.Context, characterID int64) ([]Ge
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MagicalWeaponID,
 			&i.SlotName,
 			&i.ItemName,
 			&i.ItemWeight,
@@ -413,7 +432,7 @@ func (q *Queries) GetEquippedItems(ctx context.Context, characterID int64) ([]Ge
 
 const getItemFromInventory = `-- name: GetItemFromInventory :one
 SELECT
-    id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at
+    id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at, magical_weapon_id
 FROM
     character_inventory
 WHERE
@@ -442,6 +461,7 @@ func (q *Queries) GetItemFromInventory(ctx context.Context, arg GetItemFromInven
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MagicalWeaponID,
 	)
 	return i, err
 }
@@ -473,7 +493,7 @@ SET
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?
-    AND character_id = ? RETURNING id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at
+    AND character_id = ? RETURNING id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at, magical_weapon_id
 `
 
 type UpdateInventoryItemParams struct {
@@ -506,6 +526,7 @@ func (q *Queries) UpdateInventoryItem(ctx context.Context, arg UpdateInventoryIt
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MagicalWeaponID,
 	)
 	return i, err
 }

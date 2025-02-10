@@ -14,10 +14,12 @@ import (
 )
 
 type ItemData struct {
-	ID     int64
-	Name   string
-	Weight int64
-	CostGP float64
+	ID               int64
+	Name             string
+	Weight           int64
+	Cost             float64
+	BaseWeaponName   string
+	EnhancementBonus int64
 }
 
 func (s *Server) getEquipmentSlots() ([]db.EquipmentSlot, error) {
@@ -152,7 +154,10 @@ func (s *Server) handleAddItemForm(w http.ResponseWriter, r *http.Request, chara
 	err = tmpl.ExecuteTemplate(w, "base.html", data)
 	if err != nil {
 		log.Printf("Template execution error: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		if _, ok := w.(http.ResponseWriter); ok {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
 	}
 }
 
@@ -248,7 +253,6 @@ func (s *Server) handleAddItemSubmission(w http.ResponseWriter, r *http.Request,
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item added successfully", characterID), http.StatusSeeOther)
 }
 
-// Helper method to get items by type
 func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 	queries := db.New(s.db)
 	var items []ItemData
@@ -264,23 +268,40 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: item.CostGp,
+				Cost:   item.CostGp,
 			})
 		}
+
 	case "weapon":
 		weaponItems, err := queries.GetWeaponItems(context.Background())
 		if err != nil {
 			return nil, err
 		}
 		for _, item := range weaponItems {
-			costGP := float64(item.CostGp)
 			items = append(items, ItemData{
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: costGP,
+				Cost:   float64(item.CostGp),
 			})
 		}
+
+	case "magical_weapon":
+		magicalWeapons, err := queries.GetMagicalWeapons(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range magicalWeapons {
+			items = append(items, ItemData{
+				ID:               item.MagicalWeaponID,
+				Name:             item.BaseWeaponName,
+				Weight:           item.Weight,
+				Cost:             float64(item.CostGp),
+				BaseWeaponName:   item.BaseWeaponName,
+				EnhancementBonus: item.EnhancementBonus,
+			})
+		}
+
 	case "armor":
 		armorItems, err := queries.GetArmorItems(context.Background())
 		if err != nil {
@@ -291,9 +312,10 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: float64(item.CostGp),
+				Cost:   float64(item.CostGp),
 			})
 		}
+
 	case "ammunition":
 		ammoItems, err := queries.GetAmmunitionItems(context.Background())
 		if err != nil {
@@ -304,9 +326,10 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: item.CostGp,
+				Cost:   item.CostGp,
 			})
 		}
+
 	case "container":
 		containerItems, err := queries.GetContainerItems(context.Background())
 		if err != nil {
@@ -317,9 +340,10 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: item.CostGp,
+				Cost:   item.CostGp,
 			})
 		}
+
 	case "shield":
 		shieldItems, err := queries.GetShieldItems(context.Background())
 		if err != nil {
@@ -330,26 +354,28 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: float64(item.CostGp),
+				Cost:   float64(item.CostGp),
 			})
 		}
+
 	case "ranged_weapon":
 		rangedItems, err := queries.GetRangedWeaponItems(context.Background())
 		if err != nil {
 			return nil, err
 		}
 		for _, item := range rangedItems {
-			var costGP float64
+			var cost float64
 			if item.CostGp.Valid {
-				costGP = float64(item.CostGp.Int64)
+				cost = float64(item.CostGp.Int64)
 			}
 			items = append(items, ItemData{
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				CostGP: costGP,
+				Cost:   cost,
 			})
 		}
+
 	default:
 		return nil, fmt.Errorf("unknown item type: %s", itemType)
 	}

@@ -1,10 +1,13 @@
-{{define "title"}}Add Item to Inventory - Mordezzan{{end}} {{define "content"}}
+{{define "title"}}Add Item to Inventory - Mordezzan{{end}}
+{{define "content"}}
 <div class="add-item-container">
     <h1>Add Item to Inventory</h1>
 
     {{if .FlashMessage}}
     <div class="flash-message">{{.FlashMessage}}</div>
-    {{end}} {{if not .SelectedType}}
+    {{end}}
+
+    {{if not .SelectedType}}
     <form action="/characters/inventory/add" method="GET">
         <input type="hidden" name="character_id" value="{{.CharacterID}}" />
         <div class="form-group">
@@ -13,6 +16,7 @@
                 <option value="">-- Select Type --</option>
                 <option value="equipment">Equipment</option>
                 <option value="weapon">Weapon</option>
+                <option value="magical_weapon">Magical Weapon</option>
                 <option value="armor">Armor</option>
                 <option value="ammunition">Ammunition</option>
                 <option value="container">Container</option>
@@ -22,9 +26,7 @@
         </div>
         <div class="form-actions">
             <button type="submit" class="button primary">Next</button>
-            <a href="/characters/detail?id={{.CharacterID}}" class="button"
-                >Cancel</a
-            >
+            <a href="/characters/detail?id={{.CharacterID}}" class="button">Cancel</a>
         </div>
     </form>
 
@@ -35,11 +37,15 @@
 
         <div class="form-group">
             <label for="item_id">Select Item:</label>
-            <select name="item_id" id="item_id" required>
+            <select name="{{if eq .SelectedType "magical_weapon"}}magical_weapon_id{{else}}item_id{{end}}" id="item_id" required>
                 <option value="">-- Select Item --</option>
                 {{range .Items}}
                 <option value="{{.ID}}">
-                    {{.Name}} ({{.Weight}} lbs - {{.CostGP}} gp)
+                    {{if eq $.SelectedType "magical_weapon"}}
+                        {{.BaseWeaponName}} +{{.EnhancementBonus}} ({{.Cost}} gp)
+                    {{else}}
+                        {{.Name}} ({{.Weight}} lbs - {{.Cost}} gp)
+                    {{end}}
                 </option>
                 {{end}}
             </select>
@@ -47,21 +53,12 @@
 
         <div class="form-group">
             <label for="quantity">Quantity:</label>
-            <input
-                type="number"
-                name="quantity"
-                id="quantity"
-                value="1"
-                min="1"
-                required
-            />
+            <input type="number" name="quantity" id="quantity" value="1" min="1" required />
         </div>
 
         {{if .Containers}}
         <div class="form-group">
-            <label for="container_inventory_id"
-                >Store in Container (optional):</label
-            >
+            <label for="container_inventory_id">Store in Container (optional):</label>
             <select name="container_inventory_id" id="container_inventory_id">
                 <option value="">-- None --</option>
                 {{range .Containers}}
@@ -69,7 +66,9 @@
                 {{end}}
             </select>
         </div>
-        {{end}} {{if .ShowEquipmentSlots}}
+        {{end}}
+
+        {{if .ShowEquipmentSlots}}
         <div class="form-group">
             <label for="equipment_slot_id">Equipment Slot (optional):</label>
             <select name="equipment_slot_id" id="equipment_slot_id">
@@ -88,14 +87,8 @@
 
         <div class="form-actions">
             <button type="submit" class="button primary">Add Item</button>
-            <a
-                href="/characters/inventory/add?character_id={{.CharacterID}}"
-                class="button"
-                >Back</a
-            >
-            <a href="/characters/detail?id={{.CharacterID}}" class="button"
-                >Cancel</a
-            >
+            <a href="/characters/inventory/add?character_id={{.CharacterID}}" class="button">Back</a>
+            <a href="/characters/detail?id={{.CharacterID}}" class="button">Cancel</a>
         </div>
     </form>
     {{end}}

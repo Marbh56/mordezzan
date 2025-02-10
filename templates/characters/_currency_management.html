@@ -1,0 +1,69 @@
+{{define "_currency_management"}}
+<div class="currency-section">
+    <h2>Currency</h2>
+
+    <div class="current-currency">
+        <h3>Current Holdings</h3>
+        <div class="currency-grid">
+            <div class="currency-item">
+                <span class="label">Platinum:</span>
+                <span class="value">{{.Character.PlatinumPieces}} pp</span>
+            </div>
+            <div class="currency-item">
+                <span class="label">Gold:</span>
+                <span class="value">{{.Character.GoldPieces}} gp</span>
+            </div>
+            <div class="currency-item">
+                <span class="label">Electrum:</span>
+                <span class="value">{{.Character.ElectrumPieces}} ep</span>
+            </div>
+            <div class="currency-item">
+                <span class="label">Silver:</span>
+                <span class="value">{{.Character.SilverPieces}} sp</span>
+            </div>
+            <div class="currency-item">
+                <span class="label">Copper:</span>
+                <span class="value">{{.Character.CopperPieces}} cp</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="currency-management">
+        <h3>Add/Remove Currency</h3>
+        <form
+            action="/characters/currency/update"
+            method="POST"
+            class="currency-form"
+        >
+            <input
+                type="hidden"
+                name="character_id"
+                value="{{.Character.ID}}"
+            />
+
+            <div class="form-group">
+                <label for="amount">Amount:</label>
+                <input type="number" id="amount" name="amount" required />
+                <p class="help-text">
+                    Use positive numbers to add, negative to subtract
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="denomination">Denomination:</label>
+                <select id="denomination" name="denomination" required>
+                    <option value="pp">Platinum (pp)</option>
+                    <option value="gp">Gold (gp)</option>
+                    <option value="ep">Electrum (ep)</option>
+                    <option value="sp">Silver (sp)</option>
+                    <option value="cp">Copper (cp)</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="button">Update Currency</button>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

@@ -67,6 +67,23 @@ type CharacterInventory struct {
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
+	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
+}
+
+type CharacterInventoryWithMagic struct {
+	ID                   int64          `json:"id"`
+	CharacterID          int64          `json:"character_id"`
+	ItemType             string         `json:"item_type"`
+	ItemID               int64          `json:"item_id"`
+	Quantity             int64          `json:"quantity"`
+	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
+	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
+	Notes                sql.NullString `json:"notes"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
+	ItemName             interface{}    `json:"item_name"`
+	ItemWeight           int64          `json:"item_weight"`
 }
 
 type CharacterWeaponMastery struct {
@@ -123,6 +140,16 @@ type EquipmentSlot struct {
 	ID          int64          `json:"id"`
 	Name        string         `json:"name"`
 	Description sql.NullString `json:"description"`
+}
+
+type MagicalWeapon struct {
+	ID               int64        `json:"id"`
+	BaseWeaponID     int64        `json:"base_weapon_id"`
+	EnhancementBonus int64        `json:"enhancement_bonus"`
+	CostGp           int64        `json:"cost_gp"`
+	XpValue          int64        `json:"xp_value"`
+	CreatedAt        sql.NullTime `json:"created_at"`
+	UpdatedAt        sql.NullTime `json:"updated_at"`
 }
 
 type RangedWeapon struct {

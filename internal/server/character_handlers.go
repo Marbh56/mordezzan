@@ -14,6 +14,113 @@ import (
 	"github.com/marbh56/mordezzan/internal/rules"
 )
 
+func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Get parameters
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	amount, err := strconv.ParseInt(r.Form.Get("amount"), 10, 64)
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid amount", characterID), http.StatusSeeOther)
+		return
+	}
+
+	denomination := r.Form.Get("denomination")
+	if !isValidDenomination(denomination) {
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid denomination", characterID), http.StatusSeeOther)
+		return
+	}
+
+	// Get character
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		log.Printf("Error fetching character: %v", err)
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Update currency based on denomination
+	var updateParams db.UpdateCharacterParams
+	updateParams = db.UpdateCharacterParams{
+		ID:               characterID,
+		UserID:           user.UserID,
+		Name:             character.Name,
+		Class:            character.Class,
+		Level:            character.Level,
+		MaxHp:            character.MaxHp,
+		CurrentHp:        character.CurrentHp,
+		Strength:         character.Strength,
+		Dexterity:        character.Dexterity,
+		Constitution:     character.Constitution,
+		Intelligence:     character.Intelligence,
+		Wisdom:           character.Wisdom,
+		Charisma:         character.Charisma,
+		ExperiencePoints: character.ExperiencePoints,
+		PlatinumPieces:   character.PlatinumPieces,
+		GoldPieces:       character.GoldPieces,
+		ElectrumPieces:   character.ElectrumPieces,
+		SilverPieces:     character.SilverPieces,
+		CopperPieces:     character.CopperPieces,
+	}
+
+	switch denomination {
+	case "pp":
+		updateParams.PlatinumPieces = character.PlatinumPieces + amount
+	case "gp":
+		updateParams.GoldPieces = character.GoldPieces + amount
+	case "ep":
+		updateParams.ElectrumPieces = character.ElectrumPieces + amount
+	case "sp":
+		updateParams.SilverPieces = character.SilverPieces + amount
+	case "cp":
+		updateParams.CopperPieces = character.CopperPieces + amount
+	}
+
+	// Perform update
+	_, err = queries.UpdateCharacter(r.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating character currency: %v", err)
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating currency", characterID), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Currency updated successfully", characterID), http.StatusSeeOther)
+}
+
+func isValidDenomination(denom string) bool {
+	validDenoms := map[string]bool{
+		"pp": true,
+		"gp": true,
+		"ep": true,
+		"sp": true,
+		"cp": true,
+	}
+	return validDenoms[denom]
+}
+
 func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -356,6 +463,7 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		"templates/characters/_combat_stats.html",
 		"templates/characters/_saving_throws.html",
 		"templates/characters/_character_header.html",
+		"templates/characters/_currency_management.html",
 	)
 
 	if err != nil {
