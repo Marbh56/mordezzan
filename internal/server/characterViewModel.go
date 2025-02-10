@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/marbh56/mordezzan/internal/currency"
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/rules"
-	"github.com/marbh56/mordezzan/internal/rules/currency"
 )
 
 func interfaceToNullString(v interface{}) sql.NullString {
