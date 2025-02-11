@@ -1,5 +1,4 @@
-package rules
-
+package ability_scores
 // DexterityModifiers contains all modifiers and chances for a given Dexterity score
 type DexterityModifiers struct {
 	Score             int64  `json:"score"`

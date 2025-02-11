@@ -1,4 +1,4 @@
-package rules
+package ability_scores
 
 // StrengthModifiers contains all the modifiers and chances for a given Strength score
 type StrengthModifiers struct {

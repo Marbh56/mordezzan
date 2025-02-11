@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/db"
-	"github.com/marbh56/mordezzan/internal/rules"
+	"github.com/marbh56/mordezzan/internal/rules/combat"
 )
 
 type WeaponMasteryData struct {
@@ -97,7 +97,7 @@ func (s *Server) handleWeaponMasteryForm(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Calculate available slots based on level
-	availableSlots := rules.GetAvailableMasterySlots(character.Level) - len(currentMasteries)
+	availableSlots := combat.GetAvailableMasterySlots(character.Level) - len(currentMasteries)
 	if availableSlots < 0 {
 		availableSlots = 0
 	}
@@ -200,7 +200,7 @@ func (s *Server) handleAddMastery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	availableSlots := rules.GetAvailableMasterySlots(character.Level) - len(currentMasteries)
+	availableSlots := combat.GetAvailableMasterySlots(character.Level) - len(currentMasteries)
 	if availableSlots <= 0 {
 		http.Redirect(w, r, fmt.Sprintf("/characters/masteries?id=%d&message=No available mastery slots", characterID), http.StatusSeeOther)
 		return

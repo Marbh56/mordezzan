@@ -1,4 +1,4 @@
-package rules
+package character
 
 type ClassLevel struct {
 	Level       int64

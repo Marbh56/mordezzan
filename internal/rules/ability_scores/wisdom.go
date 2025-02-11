@@ -1,4 +1,4 @@
-package rules
+package ability_scores
 
 // WisdomModifiers contains all modifiers and chances for a given Wisdom score
 type WisdomModifiers struct {

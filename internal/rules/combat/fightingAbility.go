@@ -1,4 +1,4 @@
-package rules
+package combat
 
 func CalculateFightingAbility(class string, level int64) int64 {
 	switch class {

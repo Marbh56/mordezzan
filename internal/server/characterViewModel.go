@@ -7,6 +7,9 @@ import (
 	"github.com/marbh56/mordezzan/internal/currency"
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/rules"
+	"github.com/marbh56/mordezzan/internal/rules/ability_scores"
+	charRules "github.com/marbh56/mordezzan/internal/rules/character"
+	"github.com/marbh56/mordezzan/internal/rules/combat"
 )
 
 func interfaceToNullString(v interface{}) sql.NullString {
@@ -52,7 +55,7 @@ type InventoryItem struct {
 	Damage               sql.NullString `json:"damage"`
 	AttacksPerRound      sql.NullString `json:"attacks_per_round"`
 	MovementRate         sql.NullInt64  `json:"movement_rate"`
-	DefenseBonus         interface{}    `json:"defense_bonus"` // Add this line
+	DefenseBonus         interface{}    `json:"defense_bonus"`
 	Notes                sql.NullString `json:"notes"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
@@ -95,24 +98,24 @@ type CharacterViewModel struct {
 	CurrentHp  int64  `json:"current_hp"`
 	ArmorClass int    `json:"armor_class"`
 
-	// Ability scores with modifiers
-	Strength          int64                   `json:"strength"`
-	StrengthModifiers rules.StrengthModifiers `json:"strength_modifiers"`
+	// Ability scores and modifiers
+	Strength          int64                            `json:"strength"`
+	StrengthModifiers ability_scores.StrengthModifiers `json:"strength_modifiers"`
 
-	Dexterity          int64                    `json:"dexterity"`
-	DexterityModifiers rules.DexterityModifiers `json:"dexterity_modifiers"`
+	Dexterity          int64                             `json:"dexterity"`
+	DexterityModifiers ability_scores.DexterityModifiers `json:"dexterity_modifiers"`
 
-	Constitution          int64                       `json:"constitution"`
-	ConstitutionModifiers rules.ConstitutionModifiers `json:"constitution_modifiers"`
+	Constitution          int64                                `json:"constitution"`
+	ConstitutionModifiers ability_scores.ConstitutionModifiers `json:"constitution_modifiers"`
 
-	Intelligence          int64                       `json:"intelligence"`
-	IntelligenceModifiers rules.IntelligenceModifiers `json:"intelligence_modifiers"`
+	Intelligence          int64                                `json:"intelligence"`
+	IntelligenceModifiers ability_scores.IntelligenceModifiers `json:"intelligence_modifiers"`
 
-	Wisdom          int64                 `json:"wisdom"`
-	WisdomModifiers rules.WisdomModifiers `json:"wisdom_modifiers"`
+	Wisdom          int64                          `json:"wisdom"`
+	WisdomModifiers ability_scores.WisdomModifiers `json:"wisdom_modifiers"`
 
-	Charisma          int64                   `json:"charisma"`
-	CharismaModifiers rules.CharismaModifiers `json:"charisma_modifiers"`
+	Charisma          int64                            `json:"charisma"`
+	CharismaModifiers ability_scores.CharismaModifiers `json:"charisma_modifiers"`
 
 	// Combat information
 	CombatMatrix []int64 `json:"combat_matrix"`
@@ -191,12 +194,12 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 		ExperiencePoints: c.ExperiencePoints,
 
 		// Initialize modifiers
-		StrengthModifiers:     rules.CalculateStrengthModifiers(c.Strength),
-		DexterityModifiers:    rules.CalculateDexterityModifiers(c.Dexterity),
-		ConstitutionModifiers: rules.CalculateConstitutionModifiers(c.Constitution),
-		IntelligenceModifiers: rules.CalculateIntelligenceModifiers(c.Intelligence),
-		WisdomModifiers:       rules.CalculateWisdomModifiers(c.Wisdom),
-		CharismaModifiers:     rules.CalculateCharismaModifiers(c.Charisma),
+		StrengthModifiers:     ability_scores.CalculateStrengthModifiers(c.Strength),
+		DexterityModifiers:    ability_scores.CalculateDexterityModifiers(c.Dexterity),
+		ConstitutionModifiers: ability_scores.CalculateConstitutionModifiers(c.Constitution),
+		IntelligenceModifiers: ability_scores.CalculateIntelligenceModifiers(c.Intelligence),
+		WisdomModifiers:       ability_scores.CalculateWisdomModifiers(c.Wisdom),
+		CharismaModifiers:     ability_scores.CalculateCharismaModifiers(c.Charisma),
 
 		// Initialize inventory containers
 		ContainerItems: make(map[int64][]InventoryItem),
@@ -207,7 +210,7 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	}
 
 	// Get class progression
-	progression := rules.GetClassProgression(vm.Class)
+	progression := charRules.GetClassProgression(vm.Class)
 
 	// Calculate XP needed for next level
 	vm.XPNeeded = progression.GetXPForNextLevel(c.ExperiencePoints)
@@ -355,14 +358,14 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	}
 
 	// Calculate FA and generate combat matrix row
-	fa := rules.CalculateFightingAbility(c.Class, c.Level)
+	fa := combat.CalculateFightingAbility(c.Class, c.Level)
 	vm.CombatMatrix = make([]int64, 19) // -9 to 9 AC
 	for ac := -9; ac <= 9; ac++ {
-		vm.CombatMatrix[ac+9] = rules.GetTargetNumber(fa, int64(ac))
+		vm.CombatMatrix[ac+9] = combat.GetTargetNumber(fa, int64(ac))
 	}
 
 	// Get saving throw value
-	progression = rules.GetClassProgression(vm.Class)
+	progression = charRules.GetClassProgression(vm.Class)
 	vm.SavingThrow = progression.GetSavingThrow(vm.Level)
 
 	return vm

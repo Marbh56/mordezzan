@@ -1,4 +1,4 @@
-package rules
+package ability_scores
 
 // CharismaModifiers contains all modifiers and limitations for a given Charisma score
 type CharismaModifiers struct {

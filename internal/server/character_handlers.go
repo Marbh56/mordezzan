@@ -11,8 +11,39 @@ import (
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/db"
-	"github.com/marbh56/mordezzan/internal/rules"
+	"github.com/marbh56/mordezzan/internal/rules/ability_scores"
+	charRules "github.com/marbh56/mordezzan/internal/rules/character"
 )
+
+func calculateTotalHP(baseHP, level, constitution int64) (int64, error) {
+	if baseHP <= 0 {
+		return 0, fmt.Errorf("Base HP must be positive")
+	}
+
+	if level < 1 || level > 20 {
+		return 0, fmt.Errorf("Level must be between 1 and 20")
+	}
+
+	if constitution < 3 || constitution > 18 {
+		return 0, fmt.Errorf("Constitution must be between 3 and 18")
+	}
+
+	// Get constitution modifiers from new package
+	conMods := ability_scores.CalculateConstitutionModifiers(constitution)
+
+	// Calculate additional HP from constitution modifier
+	constitutionBonus := int64(conMods.HitPointMod) * level
+
+	// Total HP is base HP plus constitution bonus
+	totalHP := baseHP + constitutionBonus
+
+	// Ensure minimum HP of 1
+	if totalHP < 1 {
+		return 1, nil
+	}
+
+	return totalHP, nil
+}
 
 func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -150,7 +181,7 @@ func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	progression := rules.GetClassProgression(character.Class)
+	progression := charRules.GetClassProgression(character.Class)
 	hitDice := progression.GetHitDice(character.Level)
 
 	parts := strings.Split(hitDice, "d")
@@ -168,8 +199,8 @@ func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 	// Roll just one die
 	total := rand.IntN(diceSize) + 1
 
-	// Add Constitution bonus
-	conMods := rules.CalculateConstitutionModifiers(character.Constitution)
+	// Add Constitution bonus using new package
+	conMods := ability_scores.CalculateConstitutionModifiers(character.Constitution)
 	total += conMods.HitPointMod
 
 	// Calculate new HP, not exceeding max
@@ -260,7 +291,7 @@ func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get class progression
-	progression := rules.GetClassProgression(character.Class)
+	progression := charRules.GetClassProgression(character.Class)
 
 	// Calculate appropriate level for new XP
 	newLevel := progression.GetLevelForXP(newXP)
@@ -299,7 +330,7 @@ func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
 }
 
 func calculateMinimumXPForLevel(class string, level int64) int64 {
-	progression := rules.GetClassProgression(class)
+	progression := charRules.GetClassProgression(class)
 	for _, levelInfo := range progression.Levels {
 		if levelInfo.Level == level {
 			return levelInfo.XPRequired
@@ -351,7 +382,7 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return s
 		},
-		"GetSavingThrowModifiers": rules.GetSavingThrowModifiers,
+		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
 		"add": func(a, b interface{}) int64 {
 			// Handle int64 + int
 			switch v := a.(type) {
@@ -746,7 +777,7 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	params.Constitution = constitution
 
 	// Calculate total HP using the rules package
-	totalHP, err := rules.CalculateTotalHP(baseHP, level, constitution)
+	totalHP, err := calculateTotalHP(baseHP, level, constitution)
 	if err != nil {
 		http.Redirect(w, r, "/characters/create?message="+err.Error(), http.StatusSeeOther)
 		return

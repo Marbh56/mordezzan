@@ -1,4 +1,4 @@
-package rules
+package ability_scores
 
 // IntelligenceModifiers contains all the modifiers and bonuses for a given Intelligence score
 type IntelligenceModifiers struct {

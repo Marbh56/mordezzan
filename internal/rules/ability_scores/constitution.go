@@ -1,4 +1,4 @@
-package rules
+package ability_scores
 
 // ConstitutionModifiers contains all modifiers and chances for a given Constitution score
 type ConstitutionModifiers struct {

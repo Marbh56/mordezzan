@@ -1,4 +1,4 @@
-package rules
+package combat
 
 type MasteryLevel string
 

@@ -1,4 +1,4 @@
-package rules
+package character
 
 // Calculate Bonus Experience Points
 
