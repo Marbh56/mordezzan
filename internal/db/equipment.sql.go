@@ -7,7 +7,295 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
+
+const getAmmunitionItems = `-- name: GetAmmunitionItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM ammunition
+ORDER BY name
+`
+
+type GetAmmunitionItemsRow struct {
+	ID     int64         `json:"id"`
+	Name   string        `json:"name"`
+	Cost   float64       `json:"cost"`
+	Weight sql.NullInt64 `json:"weight"`
+}
+
+func (q *Queries) GetAmmunitionItems(ctx context.Context) ([]GetAmmunitionItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAmmunitionItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAmmunitionItemsRow
+	for rows.Next() {
+		var i GetAmmunitionItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getArmorItems = `-- name: GetArmorItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM armor
+ORDER BY name
+`
+
+type GetArmorItemsRow struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Cost   int64  `json:"cost"`
+	Weight int64  `json:"weight"`
+}
+
+func (q *Queries) GetArmorItems(ctx context.Context) ([]GetArmorItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getArmorItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetArmorItemsRow
+	for rows.Next() {
+		var i GetArmorItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContainerItems = `-- name: GetContainerItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM containers
+ORDER BY name
+`
+
+type GetContainerItemsRow struct {
+	ID     int64         `json:"id"`
+	Name   string        `json:"name"`
+	Cost   float64       `json:"cost"`
+	Weight sql.NullInt64 `json:"weight"`
+}
+
+func (q *Queries) GetContainerItems(ctx context.Context) ([]GetContainerItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getContainerItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContainerItemsRow
+	for rows.Next() {
+		var i GetContainerItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEquipmentItems = `-- name: GetEquipmentItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM equipment
+ORDER BY name
+`
+
+type GetEquipmentItemsRow struct {
+	ID     int64         `json:"id"`
+	Name   string        `json:"name"`
+	Cost   float64       `json:"cost"`
+	Weight sql.NullInt64 `json:"weight"`
+}
+
+func (q *Queries) GetEquipmentItems(ctx context.Context) ([]GetEquipmentItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEquipmentItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEquipmentItemsRow
+	for rows.Next() {
+		var i GetEquipmentItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRangedWeaponItems = `-- name: GetRangedWeaponItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM ranged_weapons
+ORDER BY name
+`
+
+type GetRangedWeaponItemsRow struct {
+	ID     int64         `json:"id"`
+	Name   string        `json:"name"`
+	Cost   sql.NullInt64 `json:"cost"`
+	Weight int64         `json:"weight"`
+}
+
+func (q *Queries) GetRangedWeaponItems(ctx context.Context) ([]GetRangedWeaponItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRangedWeaponItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRangedWeaponItemsRow
+	for rows.Next() {
+		var i GetRangedWeaponItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getShieldItems = `-- name: GetShieldItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM shields
+ORDER BY name
+`
+
+type GetShieldItemsRow struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Cost   int64  `json:"cost"`
+	Weight int64  `json:"weight"`
+}
+
+func (q *Queries) GetShieldItems(ctx context.Context) ([]GetShieldItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getShieldItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetShieldItemsRow
+	for rows.Next() {
+		var i GetShieldItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWeaponItems = `-- name: GetWeaponItems :many
+SELECT id, name, cost_gp as cost, weight
+FROM weapons
+ORDER BY name
+`
+
+type GetWeaponItemsRow struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Cost   int64  `json:"cost"`
+	Weight int64  `json:"weight"`
+}
+
+func (q *Queries) GetWeaponItems(ctx context.Context) ([]GetWeaponItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getWeaponItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWeaponItemsRow
+	for rows.Next() {
+		var i GetWeaponItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Cost,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const listEquipmentSlots = `-- name: ListEquipmentSlots :many
 SELECT

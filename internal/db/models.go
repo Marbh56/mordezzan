@@ -194,6 +194,25 @@ type Shield struct {
 	UpdatedAt    sql.NullTime `json:"updated_at"`
 }
 
+type Spell struct {
+	ID          int64        `json:"id"`
+	Name        string       `json:"name"`
+	Range       string       `json:"range"`
+	Duration    string       `json:"duration"`
+	Description string       `json:"description"`
+	CreatedAt   sql.NullTime `json:"created_at"`
+	UpdatedAt   sql.NullTime `json:"updated_at"`
+}
+
+type SpellClassLevel struct {
+	ID        int64        `json:"id"`
+	SpellID   int64        `json:"spell_id"`
+	Class     string       `json:"class"`
+	Level     int64        `json:"level"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	UpdatedAt sql.NullTime `json:"updated_at"`
+}
+
 type User struct {
 	ID           int64     `json:"id"`
 	Username     string    `json:"username"`

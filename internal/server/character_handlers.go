@@ -17,15 +17,15 @@ import (
 
 func calculateTotalHP(baseHP, level, constitution int64) (int64, error) {
 	if baseHP <= 0 {
-		return 0, fmt.Errorf("Base HP must be positive")
+		return 0, fmt.Errorf("base HP must be positive")
 	}
 
 	if level < 1 || level > 20 {
-		return 0, fmt.Errorf("Level must be between 1 and 20")
+		return 0, fmt.Errorf("level must be between 1 and 20")
 	}
 
 	if constitution < 3 || constitution > 18 {
-		return 0, fmt.Errorf("Constitution must be between 3 and 18")
+		return 0, fmt.Errorf("constitution must be between 3 and 18")
 	}
 
 	// Get constitution modifiers from new package
@@ -94,8 +94,8 @@ func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update currency based on denomination
-	var updateParams db.UpdateCharacterParams
-	updateParams = db.UpdateCharacterParams{
+
+	updateParams := db.UpdateCharacterParams{
 		ID:               characterID,
 		UserID:           user.UserID,
 		Name:             character.Name,

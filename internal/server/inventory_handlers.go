@@ -170,6 +170,10 @@ func (s *Server) handleAddItemSubmission(w http.ResponseWriter, r *http.Request,
 	// Parse basic item info
 	itemType := r.Form.Get("item_type")
 	itemID, err := strconv.ParseInt(r.Form.Get("item_id"), 10, 64)
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Invalid item ID", characterID), http.StatusSeeOther)
+		return
+	}
 	quantity, err := strconv.ParseInt(r.Form.Get("quantity"), 10, 64)
 	if err != nil || quantity < 1 {
 		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add?character_id=%d&message=Invalid quantity", characterID), http.StatusSeeOther)
@@ -264,11 +268,15 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 			return nil, err
 		}
 		for _, item := range equipmentItems {
+			weight := int64(0)
+			if item.Weight.Valid {
+				weight = item.Weight.Int64
+			}
 			items = append(items, ItemData{
 				ID:     item.ID,
 				Name:   item.Name,
-				Weight: item.Weight,
-				Cost:   item.CostGp,
+				Weight: weight,
+				Cost:   item.Cost,
 			})
 		}
 
@@ -282,7 +290,7 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				Cost:   float64(item.CostGp),
+				Cost:   float64(item.Cost),
 			})
 		}
 
@@ -312,7 +320,7 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				Cost:   float64(item.CostGp),
+				Cost:   float64(item.Cost),
 			})
 		}
 
@@ -322,11 +330,15 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 			return nil, err
 		}
 		for _, item := range ammoItems {
+			weight := int64(0)
+			if item.Weight.Valid {
+				weight = item.Weight.Int64
+			}
 			items = append(items, ItemData{
 				ID:     item.ID,
 				Name:   item.Name,
-				Weight: item.Weight,
-				Cost:   item.CostGp,
+				Weight: weight,
+				Cost:   item.Cost,
 			})
 		}
 
@@ -336,11 +348,15 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 			return nil, err
 		}
 		for _, item := range containerItems {
+			weight := int64(0)
+			if item.Weight.Valid {
+				weight = item.Weight.Int64
+			}
 			items = append(items, ItemData{
 				ID:     item.ID,
 				Name:   item.Name,
-				Weight: item.Weight,
-				Cost:   item.CostGp,
+				Weight: weight,
+				Cost:   item.Cost,
 			})
 		}
 
@@ -354,7 +370,7 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 				ID:     item.ID,
 				Name:   item.Name,
 				Weight: item.Weight,
-				Cost:   float64(item.CostGp),
+				Cost:   float64(item.Cost),
 			})
 		}
 
@@ -364,14 +380,15 @@ func (s *Server) getItemsByType(itemType string) ([]ItemData, error) {
 			return nil, err
 		}
 		for _, item := range rangedItems {
-			var cost float64
-			if item.CostGp.Valid {
-				cost = float64(item.CostGp.Int64)
+			weight := item.Weight
+			cost := float64(0)
+			if item.Cost.Valid {
+				cost = float64(item.Cost.Int64)
 			}
 			items = append(items, ItemData{
 				ID:     item.ID,
 				Name:   item.Name,
-				Weight: item.Weight,
+				Weight: weight,
 				Cost:   cost,
 			})
 		}

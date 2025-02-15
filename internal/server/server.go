@@ -3,6 +3,8 @@ package server
 import (
 	"database/sql"
 	"net/http"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Server struct {
