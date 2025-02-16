@@ -6,68 +6,81 @@
         <div class="stat-value">
             {{.Character.CurrentHp}} / {{.Character.MaxHp}}
         </div>
+
+        <!-- Current HP Form -->
         <form action="/characters/hp/update" method="POST" class="hp-form">
             <input type="hidden" name="character_id" value="{{.Character.ID}}" />
             <div class="form-group">
-                <label for="hp_change">Modify HP:</label>
+                <label for="hp_change">Modify Current HP:</label>
                 <input type="number" id="hp_change" name="hp_change" required />
                 <p class="help-text">Use positive numbers to heal, negative to damage</p>
             </div>
-            <button type="submit">Update HP</button>
+            <button type="submit">Update Current HP</button>
         </form>
+
+        <!-- Max HP Form -->
+        <form action="/characters/maxhp/update" method="POST" class="hp-form">
+            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
+            <div class="form-group">
+                <label for="max_hp_change">Modify Maximum HP:</label>
+                <input type="number" id="max_hp_change" name="max_hp_change" required />
+                <p class="help-text">Use positive numbers to increase, negative to decrease</p>
+            </div>
+            <button type="submit">Update Maximum HP</button>
+        </form>
+
         <form action="/characters/rest" method="POST" class="rest-form">
             <input type="hidden" name="character_id" value="{{.Character.ID}}" />
             <button type="submit">Rest (Roll Hit Dice)</button>
         </form>
     </div>
 
-        <div class="stat-block">
-            <h2>Movement Rate</h2>
-            <div class="stat-value">
-                {{$moveRate := 40}} {{range .Character.EquippedItems}} {{if and
-                (eq .ItemType "armor") .MovementRate.Valid}} {{$moveRate =
-                .MovementRate.Int64}} {{end}} {{end}} {{$moveRate}} feet per
-                round {{if ne $moveRate 40}} (reduced by armor) {{end}}
-            </div>
-        </div>
-
-        <div class="stat-block">
-            <h2>Armor Class</h2>
-            <div class="ac-details">
-                <p><strong>Total AC:</strong> {{.Character.ArmorClass}}</p>
-                {{if .Character.DexterityModifiers.DefenseAdj}}
-                <p>
-                    <strong>DEX Modifier:</strong>
-                    {{if ge .Character.DexterityModifiers.DefenseAdj
-                    0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}
-                </p>
-                {{end}} {{range .Character.EquippedItems}} {{if eq .ItemType
-                "armor"}}
-                <p><strong>Armor:</strong> {{.ItemName}}</p>
-                {{end}} {{if eq .ItemType "shield"}}
-                <p><strong>Shield:</strong> {{.ItemName}}</p>
-                {{end}} {{end}}
-            </div>
+    <div class="stat-block">
+        <h2>Movement Rate</h2>
+        <div class="stat-value">
+            {{$moveRate := 40}} {{range .Character.EquippedItems}} {{if and
+            (eq .ItemType "armor") .MovementRate.Valid}} {{$moveRate =
+            .MovementRate.Int64}} {{end}} {{end}} {{$moveRate}} feet per
+            round {{if ne $moveRate 40}} (reduced by armor) {{end}}
         </div>
     </div>
 
-    <!-- Combat Matrix -->
-    <div class="combat-matrix">
-        <h2>Combat Matrix</h2>
-        <table>
-            <tr>
-                <th>AC</th>
-                {{range $i := seq -9 9}}
-                <th>{{$i}}</th>
-                {{end}}
-            </tr>
-            <tr>
-                <td>Target</td>
-                {{range $tn := .Character.CombatMatrix}}
-                <td>{{$tn}}</td>
-                {{end}}
-            </tr>
-        </table>
+    <div class="stat-block">
+        <h2>Armor Class</h2>
+        <div class="ac-details">
+            <p><strong>Total AC:</strong> {{.Character.ArmorClass}}</p>
+            {{if .Character.DexterityModifiers.DefenseAdj}}
+            <p>
+                <strong>DEX Modifier:</strong>
+                {{if ge .Character.DexterityModifiers.DefenseAdj
+                0}}+{{end}}{{.Character.DexterityModifiers.DefenseAdj}}
+            </p>
+            {{end}} {{range .Character.EquippedItems}} {{if eq .ItemType
+            "armor"}}
+            <p><strong>Armor:</strong> {{.ItemName}}</p>
+            {{end}} {{if eq .ItemType "shield"}}
+            <p><strong>Shield:</strong> {{.ItemName}}</p>
+            {{end}} {{end}}
+        </div>
     </div>
+</div>
+
+<!-- Combat Matrix -->
+<div class="combat-matrix">
+    <h2>Combat Matrix</h2>
+    <table>
+        <tr>
+            <th>AC</th>
+            {{range $i := seq -9 9}}
+            <th>{{$i}}</th>
+            {{end}}
+        </tr>
+        <tr>
+            <td>Target</td>
+            {{range $tn := .Character.CombatMatrix}}
+            <td>{{$tn}}</td>
+            {{end}}
+        </tr>
+    </table>
 </div>
 {{end}}
