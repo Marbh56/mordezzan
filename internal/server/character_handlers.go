@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/db"
+	"github.com/marbh56/mordezzan/internal/logger"
 	"github.com/marbh56/mordezzan/internal/rules/ability_scores"
 	charRules "github.com/marbh56/mordezzan/internal/rules/character"
+	"go.uber.org/zap"
 )
 
 func calculateTotalHP(baseHP, level, constitution int64) (int64, error) {
@@ -716,11 +718,17 @@ func (s *Server) handleCharacterCreateForm(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
@@ -731,6 +739,11 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 		Name:   r.Form.Get("name"),
 		Class:  r.Form.Get("class"),
 	}
+
+	logger.Debug("Processing character creation",
+		zap.String("character_name", params.Name),
+		zap.String("class", params.Class),
+		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 
 	// Validate class
 	validClasses := map[string]bool{
@@ -747,6 +760,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	}
 
 	if !validClasses[params.Class] {
+		logger.Warn("Invalid character class attempted",
+			zap.String("attempted_class", params.Class),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Redirect(w, r, "/characters/create?message=Invalid character class", http.StatusSeeOther)
 		return
 	}
@@ -754,6 +770,10 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	// Parse level
 	level, err := strconv.ParseInt(r.Form.Get("level"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid level value",
+			zap.Error(err),
+			zap.String("raw_level", r.Form.Get("level")),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Redirect(w, r, "/characters/create?message=Invalid level value", http.StatusSeeOther)
 		return
 	}
@@ -765,12 +785,20 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	// Parse base HP and constitution
 	baseHP, err := strconv.ParseInt(r.Form.Get("max_hp"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid HP value",
+			zap.Error(err),
+			zap.String("raw_hp", r.Form.Get("max_hp")),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Redirect(w, r, "/characters/create?message=Invalid HP value", http.StatusSeeOther)
 		return
 	}
 
 	constitution, err := strconv.ParseInt(r.Form.Get("constitution"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid constitution value",
+			zap.Error(err),
+			zap.String("raw_constitution", r.Form.Get("constitution")),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Redirect(w, r, "/characters/create?message=Invalid constitution value", http.StatusSeeOther)
 		return
 	}
@@ -779,6 +807,11 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	// Calculate total HP using the rules package
 	totalHP, err := calculateTotalHP(baseHP, level, constitution)
 	if err != nil {
+		logger.Error("Failed to calculate total HP",
+			zap.Error(err),
+			zap.Int64("base_hp", baseHP),
+			zap.Int64("level", level),
+			zap.Int64("constitution", constitution))
 		http.Redirect(w, r, "/characters/create?message="+err.Error(), http.StatusSeeOther)
 		return
 	}
@@ -788,6 +821,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 	// Parse other ability scores
 	str, err := strconv.ParseInt(r.Form.Get("strength"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid strength value",
+			zap.Error(err),
+			zap.String("raw_strength", r.Form.Get("strength")))
 		http.Redirect(w, r, "/characters/create?message=Invalid strength value", http.StatusSeeOther)
 		return
 	}
@@ -795,6 +831,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 
 	dex, err := strconv.ParseInt(r.Form.Get("dexterity"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid dexterity value",
+			zap.Error(err),
+			zap.String("raw_dexterity", r.Form.Get("dexterity")))
 		http.Redirect(w, r, "/characters/create?message=Invalid dexterity value", http.StatusSeeOther)
 		return
 	}
@@ -802,6 +841,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 
 	intel, err := strconv.ParseInt(r.Form.Get("intelligence"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid intelligence value",
+			zap.Error(err),
+			zap.String("raw_intelligence", r.Form.Get("intelligence")))
 		http.Redirect(w, r, "/characters/create?message=Invalid intelligence value", http.StatusSeeOther)
 		return
 	}
@@ -809,6 +851,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 
 	wis, err := strconv.ParseInt(r.Form.Get("wisdom"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid wisdom value",
+			zap.Error(err),
+			zap.String("raw_wisdom", r.Form.Get("wisdom")))
 		http.Redirect(w, r, "/characters/create?message=Invalid wisdom value", http.StatusSeeOther)
 		return
 	}
@@ -816,6 +861,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 
 	cha, err := strconv.ParseInt(r.Form.Get("charisma"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid charisma value",
+			zap.Error(err),
+			zap.String("raw_charisma", r.Form.Get("charisma")))
 		http.Redirect(w, r, "/characters/create?message=Invalid charisma value", http.StatusSeeOther)
 		return
 	}
@@ -826,6 +874,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 		params.Intelligence, params.Wisdom, params.Charisma}
 	for _, score := range abilities {
 		if score < 3 || score > 18 {
+			logger.Warn("Invalid ability score attempted",
+				zap.Int64("score", score),
+				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 			http.Redirect(w, r, "/characters/create?message=Ability scores must be between 3 and 18",
 				http.StatusSeeOther)
 			return
@@ -834,12 +885,19 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 
 	// Create character in database
 	queries := db.New(s.db)
-	_, err = queries.CreateCharacter(r.Context(), params)
+	character, err := queries.CreateCharacter(r.Context(), params)
 	if err != nil {
-		log.Printf("Error creating character: %v", err)
+		logger.Error("Failed to create character in database",
+			zap.Error(err),
+			zap.Any("params", params))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	logger.Info("Character created successfully",
+		zap.Int64("character_id", character.ID),
+		zap.String("character_name", character.Name),
+		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 
 	http.Redirect(w, r, "/characters?message=Character created successfully", http.StatusSeeOther)
 }

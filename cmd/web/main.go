@@ -1,42 +1,50 @@
 package main
 
 import (
-	"log"
 	"net"
 	"net/http"
 
 	"github.com/marbh56/mordezzan/internal/database"
+	"github.com/marbh56/mordezzan/internal/logger"
 	"github.com/marbh56/mordezzan/internal/server"
+	"go.uber.org/zap"
 )
 
 func main() {
-	log.Println("Starting application...")
+	// Initialize logger
+	if err := logger.Initialize("development"); err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	defer logger.Sync()
+
+	logger.Info("Starting application...")
 
 	// Get the local IP address
 	ip, err := getLocalIP()
 	if err != nil {
-		log.Fatal("Failed to get local IP address:", err)
+		logger.Fatal("Failed to get local IP address", zap.Error(err))
 	}
 
-	log.Println("Attempting to open database...")
+	logger.Info("Attempting to open database...")
 	db, err := database.OpenDB("./mordezzan.db")
 	if err != nil {
-		log.Fatal("Failed to open database:", err)
+		logger.Fatal("Failed to open database", zap.Error(err))
 	}
 	defer db.Close()
-	log.Println("Successfully connected to database!")
+	logger.Info("Successfully connected to database")
 
-	log.Println("Creating new server instance...")
+	logger.Info("Creating new server instance...")
 	srv := server.NewServer(db)
 
-	log.Println("Setting up routes...")
+	logger.Info("Setting up routes...")
 	handler := srv.Routes()
 
-	// Construct the address with your local IP
+	// Construct the address with local IP
 	addr := ip + ":8080"
-	log.Printf("Server starting on %s...", addr)
+	logger.Info("Server starting", zap.String("address", addr))
+
 	if err := http.ListenAndServe(addr, handler); err != nil {
-		log.Fatal("Failed to start server:", err)
+		logger.Fatal("Failed to start server", zap.Error(err))
 	}
 }
 
