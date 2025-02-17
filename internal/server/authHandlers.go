@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
-	"log"
 	"net/http"
 	"text/template"
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/db"
+	"github.com/marbh56/mordezzan/internal/logger"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -32,8 +33,10 @@ func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		log.Printf("Template parsing error: %v", err)
+		logger.Error("Failed to parse registration template",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	data := struct {
@@ -48,7 +51,8 @@ func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 
 	err = tmpl.ExecuteTemplate(w, "base.html", data)
 	if err != nil {
-		log.Printf("Tempalate execution error: %v", err)
+		logger.Error("Failed to execute registration template",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -56,6 +60,8 @@ func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRegistrerSubmission(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse registration form",
+			zap.Error(err))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
@@ -65,52 +71,76 @@ func (s *Server) handleRegistrerSubmission(w http.ResponseWriter, r *http.Reques
 	password := r.Form.Get("password")
 	confirmPassword := r.Form.Get("confirm-password")
 
+	// Validate required fields
 	if username == "" || email == "" || password == "" || confirmPassword == "" {
+		logger.Warn("Registration attempt with missing required fields",
+			zap.String("username", username),
+			zap.String("email", email))
 		http.Redirect(w, r, "/register?error=All fields are required", http.StatusSeeOther)
 		return
 	}
 
+	// Validate password match
 	if password != confirmPassword {
+		logger.Warn("Registration password mismatch",
+			zap.String("username", username),
+			zap.String("email", email))
 		http.Redirect(w, r, "/register?error=Passwords do not match", http.StatusSeeOther)
 		return
 	}
 
+	// Validate password length
 	if len(password) < 8 {
+		logger.Warn("Registration attempt with short password",
+			zap.String("username", username),
+			zap.String("email", email),
+			zap.Int("password_length", len(password)))
 		http.Redirect(w, r, "/register?error=Password must be at least 8 characters", http.StatusSeeOther)
 		return
 	}
 
 	queries := db.New(s.db)
 
+	// Check if username exists
 	_, err := queries.GetUserByUsername(context.Background(), username)
 	if err == nil {
-		// User found, so username is taken
+		logger.Warn("Registration attempt with existing username",
+			zap.String("username", username))
 		http.Redirect(w, r, "/register?error=Username already exists", http.StatusSeeOther)
 		return
 	} else if err != sql.ErrNoRows {
-		// Some other database error occurred
-		log.Printf("Error checking username: %v", err)
+		logger.Error("Database error checking username",
+			zap.Error(err),
+			zap.String("username", username))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	// Check if email exists
 	_, err = queries.GetUserByEmail(context.Background(), email)
 	if err == nil {
+		logger.Warn("Registration attempt with existing email",
+			zap.String("email", email))
 		http.Redirect(w, r, "register?error=Email already exists", http.StatusSeeOther)
 		return
 	} else if err != sql.ErrNoRows {
-		log.Printf("Error checking email: %v", err)
+		logger.Error("Database error checking email",
+			zap.Error(err),
+			zap.String("email", email))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("Error hashing password: %v", err)
+		logger.Error("Failed to hash password",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	// Create user
 	params := db.CreateUserParams{
 		Username:     username,
 		Email:        email,
@@ -119,15 +149,23 @@ func (s *Server) handleRegistrerSubmission(w http.ResponseWriter, r *http.Reques
 
 	_, err = queries.CreateUser(context.Background(), params)
 	if err != nil {
-		log.Printf("Error creating user: %v", err)
+		logger.Error("Failed to create user",
+			zap.Error(err),
+			zap.String("username", username),
+			zap.String("email", email))
 
 		if err == sql.ErrNoRows {
 			http.Redirect(w, r, "/register?error=Username or email already exists", http.StatusSeeOther)
+			return
 		}
 
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	logger.Info("New user registered successfully",
+		zap.String("username", username),
+		zap.String("email", email))
 
 	http.Redirect(w, r, "/login?message=Registration successful! Please log in", http.StatusSeeOther)
 }
@@ -149,7 +187,8 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		"templates/auth/login.html",
 	)
 	if err != nil {
-		log.Printf("Template parsing error: %v", err)
+		logger.Error("Failed to parse login template",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -166,7 +205,8 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 
 	err = tmpl.ExecuteTemplate(w, "base.html", data)
 	if err != nil {
-		log.Printf("Template execution error: %v", err)
+		logger.Error("Failed to execute login template",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -174,6 +214,8 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse login form",
+			zap.Error(err))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
@@ -182,6 +224,8 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 	password := r.Form.Get("password")
 
 	if username == "" || password == "" {
+		logger.Warn("Login attempt with missing credentials",
+			zap.String("username", username))
 		http.Redirect(w, r, "/login?message=Username and password are required", http.StatusSeeOther)
 		return
 	}
@@ -192,10 +236,14 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 	user, err := queries.GetUserByUsername(r.Context(), username)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			logger.Warn("Login attempt with non-existent username",
+				zap.String("username", username))
 			http.Redirect(w, r, "/login?message=Invalid username or password", http.StatusSeeOther)
 			return
 		}
-		log.Printf("Database error: %v", err)
+		logger.Error("Database error during login",
+			zap.Error(err),
+			zap.String("username", username))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -203,6 +251,8 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 	// Verify password
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
+		logger.Warn("Failed login attempt - invalid password",
+			zap.String("username", username))
 		http.Redirect(w, r, "/login?message=Invalid username or password", http.StatusSeeOther)
 		return
 	}
@@ -211,13 +261,15 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 	token := make([]byte, 32)
 	_, err = rand.Read(token)
 	if err != nil {
-		log.Printf("Error generating session token: %v", err)
+		logger.Error("Failed to generate session token",
+			zap.Error(err),
+			zap.String("username", username))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	sessionToken := hex.EncodeToString(token)
 
-	// Create session in database
+	// Create session
 	sessionParams := db.CreateSessionParams{
 		Token:     sessionToken,
 		UserID:    user.ID,
@@ -226,7 +278,10 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 
 	_, err = queries.CreateSession(r.Context(), sessionParams)
 	if err != nil {
-		log.Printf("Error creating session: %v", err)
+		logger.Error("Failed to create session",
+			zap.Error(err),
+			zap.String("username", username),
+			zap.Int64("user_id", user.ID))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -237,12 +292,15 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 		Value:    sessionToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil, // Set Secure flag if using HTTPS
+		Secure:   r.TLS != nil,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  sessionParams.ExpiresAt,
 	})
 
-	// Redirect to home page after successful login
+	logger.Info("User logged in successfully",
+		zap.String("username", username),
+		zap.Int64("user_id", user.ID))
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -257,7 +315,9 @@ func (s *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		queries := db.New(s.db)
 		err = queries.DeleteSession(r.Context(), cookie.Value)
 		if err != nil {
-			log.Printf("Error deleting session: %v", err)
+			logger.Error("Failed to delete session",
+				zap.Error(err),
+				zap.String("session_token", cookie.Value))
 		}
 	}
 
@@ -269,5 +329,6 @@ func (s *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Unix(0, 0),
 	})
 
+	logger.Info("User logged out")
 	http.Redirect(w, r, "/login?message=Successfully logged out", http.StatusSeeOther)
 }
