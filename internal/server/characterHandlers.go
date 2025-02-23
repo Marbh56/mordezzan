@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -49,53 +48,67 @@ func calculateTotalHP(baseHP, level, constitution int64) (int64, error) {
 
 func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		logger.Warn("Invalid HTTP method",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
 
-	// Get parameters
 	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.String("raw_id", r.Form.Get("character_id")),
+			zap.Error(err))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
 
 	amount, err := strconv.ParseInt(r.Form.Get("amount"), 10, 64)
 	if err != nil {
+		logger.Warn("Invalid currency amount",
+			zap.String("raw_amount", r.Form.Get("amount")),
+			zap.Int64("character_id", characterID))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid amount", characterID), http.StatusSeeOther)
 		return
 	}
 
 	denomination := r.Form.Get("denomination")
 	if !isValidDenomination(denomination) {
+		logger.Warn("Invalid currency denomination",
+			zap.String("denomination", denomination),
+			zap.Int64("character_id", characterID))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid denomination", characterID), http.StatusSeeOther)
 		return
 	}
 
-	// Get character
 	queries := db.New(s.db)
 	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
 		ID:     characterID,
 		UserID: user.UserID,
 	})
 	if err != nil {
-		log.Printf("Error fetching character: %v", err)
+		logger.Error("Error fetching character",
+			zap.Int64("character_id", characterID),
+			zap.Error(err))
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
-
-	// Update currency based on denomination
 
 	updateParams := db.UpdateCharacterParams{
 		ID:               characterID,
@@ -119,26 +132,47 @@ func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
 		CopperPieces:     character.CopperPieces,
 	}
 
+	var oldAmount, newAmount int64
 	switch denomination {
 	case "pp":
+		oldAmount = character.PlatinumPieces
 		updateParams.PlatinumPieces = character.PlatinumPieces + amount
+		newAmount = updateParams.PlatinumPieces
 	case "gp":
+		oldAmount = character.GoldPieces
 		updateParams.GoldPieces = character.GoldPieces + amount
+		newAmount = updateParams.GoldPieces
 	case "ep":
+		oldAmount = character.ElectrumPieces
 		updateParams.ElectrumPieces = character.ElectrumPieces + amount
+		newAmount = updateParams.ElectrumPieces
 	case "sp":
+		oldAmount = character.SilverPieces
 		updateParams.SilverPieces = character.SilverPieces + amount
+		newAmount = updateParams.SilverPieces
 	case "cp":
+		oldAmount = character.CopperPieces
 		updateParams.CopperPieces = character.CopperPieces + amount
+		newAmount = updateParams.CopperPieces
 	}
 
-	// Perform update
 	_, err = queries.UpdateCharacter(r.Context(), updateParams)
 	if err != nil {
-		log.Printf("Error updating character currency: %v", err)
+		logger.Error("Error updating character currency",
+			zap.Int64("character_id", characterID),
+			zap.String("denomination", denomination),
+			zap.Int64("amount_change", amount),
+			zap.Error(err))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating currency", characterID), http.StatusSeeOther)
 		return
 	}
+
+	logger.Info("Character currency updated",
+		zap.Int64("character_id", characterID),
+		zap.String("denomination", denomination),
+		zap.Int64("old_amount", oldAmount),
+		zap.Int64("new_amount", newAmount),
+		zap.Int64("change", amount))
 
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Currency updated successfully", characterID), http.StatusSeeOther)
 }
@@ -156,18 +190,24 @@ func isValidDenomination(denom string) bool {
 
 func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for rest handler",
+			zap.String("method", r.Method))
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt to rest handler")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	characterID, err := strconv.ParseInt(r.FormValue("character_id"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID in rest handler",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("character_id")))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
@@ -178,7 +218,10 @@ func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 		UserID: user.UserID,
 	})
 	if err != nil {
-		log.Printf("Error fetching character: %v", err)
+		logger.Error("Failed to fetch character for rest",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
@@ -188,30 +231,32 @@ func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(hitDice, "d")
 	if len(parts) != 2 {
+		logger.Error("Invalid hit dice format",
+			zap.String("hit_dice", hitDice),
+			zap.Int64("character_id", characterID))
 		http.Error(w, "Invalid hit dice format", http.StatusInternalServerError)
 		return
 	}
 
 	diceSize, err := strconv.Atoi(parts[1])
 	if err != nil {
-		log.Printf("Error parsing dice size: %v", err)
+		logger.Error("Error parsing dice size",
+			zap.Error(err),
+			zap.String("dice_part", parts[1]),
+			zap.Int64("character_id", characterID))
 		http.Error(w, "Invalid hit dice format", http.StatusInternalServerError)
 		return
 	}
-	// Roll just one die
-	total := rand.IntN(diceSize) + 1
 
-	// Add Constitution bonus using new package
+	total := rand.IntN(diceSize) + 1
 	conMods := ability_scores.CalculateConstitutionModifiers(character.Constitution)
 	total += conMods.HitPointMod
 
-	// Calculate new HP, not exceeding max
 	newHP := character.CurrentHp + int64(total)
 	if newHP > character.MaxHp {
 		newHP = character.MaxHp
 	}
 
-	// Update character
 	updateParams := db.UpdateCharacterParams{
 		ID:               characterID,
 		UserID:           user.UserID,
@@ -236,12 +281,20 @@ func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 
 	_, err = queries.UpdateCharacter(r.Context(), updateParams)
 	if err != nil {
-		log.Printf("Error updating character HP: %v", err)
+		logger.Error("Failed to update character HP after rest",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("new_hp", newHP),
+			zap.Int64("healing", int64(total)))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error during rest", characterID), http.StatusSeeOther)
 		return
 	}
 
 	message := fmt.Sprintf("Rest complete! Healed for %d HP", total)
+	logger.Info("Character rest successful",
+		zap.Int64("character_id", characterID),
+		zap.Int64("healing", int64(total)),
+		zap.Int64("new_hp", newHP))
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=%s", characterID, message), http.StatusSeeOther)
 }
 
@@ -253,36 +306,50 @@ func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
 
 	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.Form.Get("character_id")))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
 
-	// Get the character to verify ownership and current XP
 	queries := db.New(s.db)
 	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
 		ID:     characterID,
 		UserID: user.UserID,
 	})
 	if err != nil {
-		log.Printf("Error fetching character: %v", err)
+		logger.Error("Error fetching character",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
 
-	// Parse XP change
 	xpChange, err := strconv.ParseInt(r.Form.Get("xp_change"), 10, 64)
 	if err != nil {
+		logger.Warn("Invalid XP value provided",
+			zap.Error(err),
+			zap.String("raw_xp", r.Form.Get("xp_change")),
+			zap.Int64("character_id", characterID))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid XP value", characterID), http.StatusSeeOther)
 		return
 	}
@@ -292,19 +359,15 @@ func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
 		newXP = 0
 	}
 
-	// Get class progression
 	progression := charRules.GetClassProgression(character.Class)
-
-	// Calculate appropriate level for new XP
 	newLevel := progression.GetLevelForXP(newXP)
 
-	// Update character with new XP and level
 	updateParams := db.UpdateCharacterParams{
 		ID:               characterID,
 		UserID:           user.UserID,
 		Name:             character.Name,
 		Class:            character.Class,
-		Level:            newLevel, // Update level based on XP
+		Level:            newLevel,
 		MaxHp:            character.MaxHp,
 		CurrentHp:        character.CurrentHp,
 		Strength:         character.Strength,
@@ -323,10 +386,21 @@ func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
 
 	_, err = queries.UpdateCharacter(r.Context(), updateParams)
 	if err != nil {
-		log.Printf("Error updating character XP: %v", err)
+		logger.Error("Failed to update character XP",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("new_xp", newXP),
+			zap.Int64("new_level", newLevel))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating XP", characterID), http.StatusSeeOther)
 		return
 	}
+
+	logger.Info("Character XP updated successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("old_xp", character.ExperiencePoints),
+		zap.Int64("new_xp", newXP),
+		zap.Int64("old_level", character.Level),
+		zap.Int64("new_level", newLevel))
 
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=XP and level updated successfully", characterID), http.StatusSeeOther)
 }
@@ -338,12 +412,17 @@ func calculateMinimumXPForLevel(class string, level int64) int64 {
 			return levelInfo.XPRequired
 		}
 	}
+	logger.Debug("No XP requirement found for level",
+		zap.String("class", class),
+		zap.Int64("level", level))
 	return 0
 }
 
 func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -351,6 +430,9 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 	characterIDStr := r.URL.Query().Get("id")
 	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.String("raw_id", characterIDStr),
+			zap.Error(err))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
@@ -361,21 +443,25 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		UserID: user.UserID,
 	})
 	if err != nil {
-		log.Printf("Error fetching character: %v", err)
+		logger.Error("Error fetching character",
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID),
+			zap.Error(err))
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
 
 	inventory, err := queries.GetCharacterInventory(r.Context(), characterID)
 	if err != nil {
-		log.Printf("Error fetching inventory: %v", err)
+		logger.Error("Error fetching inventory",
+			zap.Int64("character_id", characterID),
+			zap.Error(err))
 		http.Error(w, "Error loading character inventory", http.StatusInternalServerError)
 		return
 	}
 
 	viewModel := NewCharacterViewModel(character, inventory)
 
-	// Create a function map and add our functions
 	funcMap := template.FuncMap{
 		"seq": func(start, end int) []int {
 			s := make([]int, end-start+1)
@@ -386,7 +472,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		},
 		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
 		"add": func(a, b interface{}) int64 {
-			// Handle int64 + int
 			switch v := a.(type) {
 			case int64:
 				switch w := b.(type) {
@@ -406,7 +491,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			return 0
 		},
 		"mul": func(a, b interface{}) int64 {
-			// Handle multiplication between different numeric types
 			switch v := a.(type) {
 			case int64:
 				switch w := b.(type) {
@@ -432,7 +516,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			return a / b
 		},
 		"sub": func(a, b interface{}) int64 {
-			// Handle int64 - int
 			switch v := a.(type) {
 			case int64:
 				switch w := b.(type) {
@@ -469,7 +552,6 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return strconv.Itoa(mod)
 		},
-		// Add the dict function here:
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, fmt.Errorf("invalid dict call")
@@ -500,17 +582,19 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		log.Printf("Template parsing error: %v", err)
+		logger.Error("Template parsing error",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Get weapon masteries if character is a fighter
 	var weaponMasteries []db.GetCharacterWeaponMasteriesRow
 	if character.Class == "Fighter" {
 		weaponMasteries, err = queries.GetCharacterWeaponMasteries(r.Context(), character.ID)
 		if err != nil {
-			log.Printf("Error fetching weapon masteries: %v", err)
+			logger.Error("Error fetching weapon masteries",
+				zap.Int64("character_id", character.ID),
+				zap.Error(err))
 		}
 	}
 
@@ -532,7 +616,8 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 
 	err = tmpl.ExecuteTemplate(w, "base.html", data)
 	if err != nil {
-		log.Printf("Template execution error: %v", err)
+		logger.Error("Template execution error",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -540,23 +625,36 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for HP update",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
 
 	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.Form.Get("character_id")),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
@@ -567,13 +665,20 @@ func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
 		UserID: user.UserID,
 	})
 	if err != nil {
-		log.Printf("Error fetching character: %v", err)
+		logger.Error("Error fetching character",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
 
 	hpChange, err := strconv.ParseInt(r.Form.Get("hp_change"), 10, 64)
 	if err != nil {
+		logger.Warn("Invalid HP change value",
+			zap.Error(err),
+			zap.String("raw_value", r.Form.Get("hp_change")),
+			zap.Int64("character_id", characterID))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid HP value", characterID), http.StatusSeeOther)
 		return
 	}
@@ -581,9 +686,16 @@ func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
 	newHP := character.CurrentHp + hpChange
 	if newHP > character.MaxHp {
 		newHP = character.MaxHp
+		logger.Info("HP change capped at max HP",
+			zap.Int64("character_id", characterID),
+			zap.Int64("attempted_hp", newHP),
+			zap.Int64("max_hp", character.MaxHp))
 	}
 	if newHP < 0 {
 		newHP = 0
+		logger.Info("HP change floored at 0",
+			zap.Int64("character_id", characterID),
+			zap.Int64("attempted_hp", newHP))
 	}
 
 	updateParams := db.UpdateCharacterParams{
@@ -610,37 +722,57 @@ func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
 
 	_, err = queries.UpdateCharacter(r.Context(), updateParams)
 	if err != nil {
-		log.Printf("Error updating character HP: %v", err)
+		logger.Error("Failed to update character HP",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("new_hp", newHP),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating HP", characterID), http.StatusSeeOther)
 		return
 	}
+
+	logger.Info("Character HP updated successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("old_hp", character.CurrentHp),
+		zap.Int64("new_hp", newHP),
+		zap.Int64("hp_change", hpChange),
+		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d", characterID), http.StatusSeeOther)
 }
 
 func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
-	// Get user from context (set by AuthMiddleware)
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Get all characters for the user
 	queries := db.New(s.db)
 	characters, err := queries.ListCharactersByUser(r.Context(), user.UserID)
 	if err != nil {
-		log.Printf("Error fetching characters: %v", err)
+		logger.Error("Failed to fetch characters",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	logger.Debug("Retrieved characters for user",
+		zap.String("user_id", strconv.FormatInt(user.UserID, 10)),
+		zap.Int("character_count", len(characters)))
 
 	tmpl, err := template.ParseFiles(
 		"templates/layout/base.html",
 		"templates/characters/list.html",
 	)
 	if err != nil {
-		log.Printf("Template parsing error: %v", err)
+		logger.Error("Template parsing failed",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -659,12 +791,16 @@ func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
+	if err = tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
+		logger.Error("Template execution failed",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	logger.Debug("Character list page rendered successfully",
+		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 }
 
 func (s *Server) HandleCharacterCreate(w http.ResponseWriter, r *http.Request) {
@@ -674,6 +810,9 @@ func (s *Server) HandleCharacterCreate(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		s.handleCharacterCreateSubmission(w, r)
 	default:
+		logger.Error("Invalid method for character creation",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
@@ -681,6 +820,9 @@ func (s *Server) HandleCharacterCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCharacterCreateForm(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -690,7 +832,9 @@ func (s *Server) handleCharacterCreateForm(w http.ResponseWriter, r *http.Reques
 		"templates/characters/create.html",
 	)
 	if err != nil {
-		log.Printf("Template parsing error: %v", err)
+		logger.Error("Template parsing failed",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -707,12 +851,16 @@ func (s *Server) handleCharacterCreateForm(w http.ResponseWriter, r *http.Reques
 		CurrentYear:     time.Now().Year(),
 	}
 
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
+	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
+		logger.Error("Template execution failed",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	logger.Debug("Character creation form rendered",
+		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 }
 
 func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.Request) {
@@ -905,6 +1053,9 @@ func (s *Server) handleCharacterCreateSubmission(w http.ResponseWriter, r *http.
 func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -912,6 +1063,9 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 	characterIDStr := r.URL.Query().Get("id")
 	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", characterIDStr))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
@@ -920,13 +1074,15 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Get character from database
 		character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
 			ID:     characterID,
 			UserID: user.UserID,
 		})
 		if err != nil {
-			log.Printf("Error fetching character: %v", err)
+			logger.Error("Failed to fetch character",
+				zap.Error(err),
+				zap.Int64("character_id", characterID),
+				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 			http.Error(w, "Character not found", http.StatusNotFound)
 			return
 		}
@@ -936,7 +1092,9 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 			"templates/characters/edit.html",
 		)
 		if err != nil {
-			log.Printf("Template parsing error: %v", err)
+			logger.Error("Template parsing failed",
+				zap.Error(err),
+				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -955,41 +1113,54 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 			CurrentYear:     time.Now().Year(),
 		}
 
-		err = tmpl.ExecuteTemplate(w, "base.html", data)
-		if err != nil {
-			log.Printf("Template execution error: %v", err)
+		if err = tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
+			logger.Error("Template execution failed",
+				zap.Error(err),
+				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
+		logger.Debug("Character edit form rendered",
+			zap.Int64("character_id", characterID),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
+			logger.Error("Failed to parse form",
+				zap.Error(err),
+				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
 			return
 		}
 
-		// Parse form values
-		strength, _ := strconv.ParseInt(r.Form.Get("strength"), 10, 64)
-		dexterity, _ := strconv.ParseInt(r.Form.Get("dexterity"), 10, 64)
-		constitution, _ := strconv.ParseInt(r.Form.Get("constitution"), 10, 64)
-		intelligence, _ := strconv.ParseInt(r.Form.Get("intelligence"), 10, 64)
-		wisdom, _ := strconv.ParseInt(r.Form.Get("wisdom"), 10, 64)
-		charisma, _ := strconv.ParseInt(r.Form.Get("charisma"), 10, 64)
+		// Parse and validate ability scores
+		abilities := make(map[string]int64)
+		for _, field := range []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"} {
+			score, err := strconv.ParseInt(r.Form.Get(field), 10, 64)
+			if err != nil {
+				logger.Error("Invalid ability score",
+					zap.Error(err),
+					zap.String("field", field),
+					zap.String("raw_value", r.Form.Get(field)))
+				http.Redirect(w, r, fmt.Sprintf("/characters/edit?id=%d&message=Invalid %s value", characterID, field), http.StatusSeeOther)
+				return
+			}
+			if score < 3 || score > 18 {
+				logger.Warn("Ability score out of range",
+					zap.String("field", field),
+					zap.Int64("value", score))
+				http.Redirect(w, r, fmt.Sprintf("/characters/edit?id=%d&message=Ability scores must be between 3 and 18", characterID), http.StatusSeeOther)
+				return
+			}
+			abilities[field] = score
+		}
+
 		maxHp, _ := strconv.ParseInt(r.Form.Get("max_hp"), 10, 64)
 		currentHp, _ := strconv.ParseInt(r.Form.Get("current_hp"), 10, 64)
 		level, _ := strconv.ParseInt(r.Form.Get("level"), 10, 64)
 
-		// Validate ability scores
-		abilities := []int64{strength, dexterity, constitution, intelligence, wisdom, charisma}
-		for _, score := range abilities {
-			if score < 3 || score > 18 {
-				http.Redirect(w, r, fmt.Sprintf("/characters/edit?id=%d&message=Ability scores must be between 3 and 18", characterID), http.StatusSeeOther)
-				return
-			}
-		}
-
-		// Update character
-		_, err = queries.UpdateCharacter(r.Context(), db.UpdateCharacterParams{
+		updateParams := db.UpdateCharacterParams{
 			ID:           characterID,
 			UserID:       user.UserID,
 			Name:         r.Form.Get("name"),
@@ -997,46 +1168,69 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 			Level:        level,
 			MaxHp:        maxHp,
 			CurrentHp:    currentHp,
-			Strength:     strength,
-			Dexterity:    dexterity,
-			Constitution: constitution,
-			Intelligence: intelligence,
-			Wisdom:       wisdom,
-			Charisma:     charisma,
-		})
+			Strength:     abilities["strength"],
+			Dexterity:    abilities["dexterity"],
+			Constitution: abilities["constitution"],
+			Intelligence: abilities["intelligence"],
+			Wisdom:       abilities["wisdom"],
+			Charisma:     abilities["charisma"],
+		}
 
+		_, err = queries.UpdateCharacter(r.Context(), updateParams)
 		if err != nil {
-			log.Printf("Error updating character: %v", err)
+			logger.Error("Failed to update character",
+				zap.Error(err),
+				zap.Int64("character_id", characterID),
+				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 			http.Redirect(w, r, fmt.Sprintf("/characters/edit?id=%d&message=Error updating character", characterID), http.StatusSeeOther)
 			return
 		}
 
+		logger.Info("Character updated successfully",
+			zap.Int64("character_id", characterID),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Character updated successfully", characterID), http.StatusSeeOther)
 
 	default:
+		logger.Error("Invalid method for character edit",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for max HP update",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
 
 	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
 	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.Form.Get("character_id")))
 		http.Error(w, "Invalid character ID", http.StatusBadRequest)
 		return
 	}
@@ -1047,26 +1241,38 @@ func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
 		UserID: user.UserID,
 	})
 	if err != nil {
-		log.Printf("Error fetching character: %v", err)
+		logger.Error("Failed to fetch character",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
 
 	maxHPChange, err := strconv.ParseInt(r.Form.Get("max_hp_change"), 10, 64)
 	if err != nil {
+		logger.Warn("Invalid max HP change value",
+			zap.Error(err),
+			zap.String("raw_value", r.Form.Get("max_hp_change")))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid HP value", characterID), http.StatusSeeOther)
 		return
 	}
 
 	newMaxHP := character.MaxHp + maxHPChange
 	if newMaxHP < 1 {
+		logger.Warn("Attempted to set max HP below 1",
+			zap.Int64("character_id", characterID),
+			zap.Int64("attempted_max_hp", newMaxHP))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Maximum HP cannot be less than 1", characterID), http.StatusSeeOther)
 		return
 	}
 
-	// Ensure current HP doesn't exceed new max HP
 	newCurrentHP := character.CurrentHp
 	if newCurrentHP > newMaxHP {
+		logger.Info("Adjusting current HP to new max HP",
+			zap.Int64("character_id", characterID),
+			zap.Int64("old_current_hp", newCurrentHP),
+			zap.Int64("new_max_hp", newMaxHP))
 		newCurrentHP = newMaxHP
 	}
 
@@ -1094,10 +1300,20 @@ func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
 
 	_, err = queries.UpdateCharacter(r.Context(), updateParams)
 	if err != nil {
-		log.Printf("Error updating character max HP: %v", err)
+		logger.Error("Failed to update character max HP",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("new_max_hp", newMaxHP))
 		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating maximum HP", characterID), http.StatusSeeOther)
 		return
 	}
+
+	logger.Info("Character max HP updated successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("old_max_hp", character.MaxHp),
+		zap.Int64("new_max_hp", newMaxHP),
+		zap.Int64("old_current_hp", character.CurrentHp),
+		zap.Int64("new_current_hp", newCurrentHP))
 
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d", characterID), http.StatusSeeOther)
 }
