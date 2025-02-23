@@ -273,7 +273,7 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 	sessionParams := db.CreateSessionParams{
 		Token:     sessionToken,
 		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(24 * time.Hour), // Sessions last 24 hours
+		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
 	_, err = queries.CreateSession(r.Context(), sessionParams)
@@ -331,4 +331,38 @@ func (s *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("User logged out")
 	http.Redirect(w, r, "/login?message=Successfully logged out", http.StatusSeeOther)
+}
+
+func (s *Server) HandleAccountDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	queries := db.New(s.db)
+
+	// Soft delete user
+	err := queries.SoftDeleteUser(r.Context(), user.UserID)
+	if err != nil {
+		logger.Error("Failed to delete user", zap.Error(err))
+		http.Redirect(w, r, "/?message=Error deactivating account", http.StatusSeeOther)
+		return
+	}
+
+	// Clear session
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+	})
+
+	http.Redirect(w, r, "/?message=Account deactivated successfully", http.StatusSeeOther)
 }

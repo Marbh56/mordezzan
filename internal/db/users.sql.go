@@ -11,10 +11,8 @@ import (
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO
-    sessions (token, user_id, expires_at)
-VALUES
-    (?, ?, ?) RETURNING token, user_id, expires_at
+INSERT INTO sessions (token, user_id, expires_at)
+VALUES (?, ?, ?) RETURNING token, user_id, expires_at
 `
 
 type CreateSessionParams struct {
@@ -31,10 +29,8 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO
-    users (username, email, password_hash)
-VALUES
-    (?, ?, ?) RETURNING id, username, email, password_hash, created_at
+INSERT INTO users (username, email, password_hash)
+VALUES (?, ?, ?) RETURNING id, username, email, password_hash, created_at, updated_at, deleted_at
 `
 
 type CreateUserParams struct {
@@ -52,14 +48,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions
-WHERE
-    token = ?
+WHERE token = ?
 `
 
 func (q *Queries) DeleteSession(ctx context.Context, token string) error {
@@ -68,18 +65,13 @@ func (q *Queries) DeleteSession(ctx context.Context, token string) error {
 }
 
 const getSession = `-- name: GetSession :one
-SELECT
-    s.token, s.user_id, s.expires_at,
-    u.username,
-    u.email
-FROM
-    sessions s
-    JOIN users u ON s.user_id = u.id
-WHERE
-    s.token = ?
-    AND s.expires_at > CURRENT_TIMESTAMP
-LIMIT
-    1
+SELECT s.token, s.user_id, s.expires_at, u.username, u.email
+FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.token = ?
+AND s.expires_at > CURRENT_TIMESTAMP
+AND u.deleted_at IS NULL
+LIMIT 1
 `
 
 type GetSessionRow struct {
@@ -104,14 +96,11 @@ func (q *Queries) GetSession(ctx context.Context, token string) (GetSessionRow, 
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT
-    id, username, email, password_hash, created_at
-FROM
-    users
-WHERE
-    email = ?
-LIMIT
-    1
+SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+FROM users
+WHERE email = ?
+AND deleted_at IS NULL
+LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -123,19 +112,18 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT
-    id, username, email, password_hash, created_at
-FROM
-    users
-WHERE
-    username = ?
-LIMIT
-    1
+SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+FROM users
+WHERE username = ? 
+AND deleted_at IS NULL
+LIMIT 1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -147,6 +135,19 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const softDeleteUser = `-- name: SoftDeleteUser :exec
+UPDATE users 
+SET deleted_at = CURRENT_TIMESTAMP
+WHERE id = ? AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, softDeleteUser, id)
+	return err
 }

@@ -4,7 +4,9 @@ CREATE TABLE users (
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
 );
 
 CREATE TABLE sessions (
@@ -16,5 +18,4 @@ CREATE TABLE sessions (
 
 -- +goose Down
 DROP TABLE IF EXISTS sessions;
-
 DROP TABLE IF EXISTS users;
