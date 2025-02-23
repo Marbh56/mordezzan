@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"net/http"
+	"strconv"
 	"text/template"
 	"time"
 
@@ -365,4 +366,81 @@ func (s *Server) HandleAccountDelete(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.Redirect(w, r, "/?message=Account deactivated successfully", http.StatusSeeOther)
+}
+
+func (s *Server) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	newEmail := r.Form.Get("email")
+	if newEmail == "" {
+		http.Redirect(w, r, "/settings?message=Email cannot be empty", http.StatusSeeOther)
+		return
+	}
+
+	queries := db.New(s.db)
+	_, err := queries.UpdateUser(r.Context(), db.UpdateUserParams{
+		ID:    user.UserID,
+		Email: newEmail,
+	})
+	if err != nil {
+		logger.Error("Failed to update user",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+		http.Redirect(w, r, "/settings?message=Error updating email", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/settings?message=Email updated successfully", http.StatusSeeOther)
+}
+
+func (s *Server) HandleSettings(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	tmpl, err := template.ParseFiles(
+		"templates/layout/base.html",
+		"templates/auth/settings.html",
+	)
+	if err != nil {
+		logger.Error("Template parsing error", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		IsAuthenticated bool
+		Username        string
+		User            *db.GetSessionRow
+		FlashMessage    string
+		CurrentYear     int
+	}{
+		IsAuthenticated: true,
+		Username:        user.Username,
+		User:            user,
+		FlashMessage:    r.URL.Query().Get("message"),
+		CurrentYear:     time.Now().Year(),
+	}
+
+	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
+		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }

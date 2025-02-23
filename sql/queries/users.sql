@@ -37,3 +37,13 @@ VALUES (?, ?, ?) RETURNING *;
 UPDATE users 
 SET deleted_at = CURRENT_TIMESTAMP
 WHERE id = ? AND deleted_at IS NULL;
+
+-- name: UpdateUser :one
+UPDATE users 
+SET 
+    email = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE 
+    id = ? 
+    AND deleted_at IS NULL 
+RETURNING *;

@@ -42,6 +42,8 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/maxhp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateMaxHP)))
 	mux.Handle("/characters/rest", s.AuthMiddleware(http.HandlerFunc(s.HandleRest)))
 	mux.Handle("/characters/currency/update", s.AuthMiddleware(http.HandlerFunc(s.HandleCurrencyUpdate)))
+	mux.Handle("/settings", s.AuthMiddleware(http.HandlerFunc(s.HandleSettings)))
+	mux.Handle("/settings/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateUser)))
 
 	// Weapon mastery route
 	mux.Handle("/characters/masteries", s.AuthMiddleware(http.HandlerFunc(s.HandleWeaponMastery)))

@@ -1,0 +1,30 @@
+{{define "title"}}Account Settings - Mordezzan{{end}}
+
+{{define "content"}}
+<div class="settings-container">
+    <h1>Account Settings</h1>
+
+    {{if .FlashMessage}}
+    <div class="flash-message">{{.FlashMessage}}</div>
+    {{end}}
+
+    <div class="settings-section">
+        <h2>Update Email</h2>
+        <form action="/settings/update" method="POST">
+            <div class="form-group">
+                <label for="email">New Email:</label>
+                <input type="email" id="email" name="email" required value="{{.User.Email}}">
+            </div>
+            <button type="submit">Update Email</button>
+        </form>
+    </div>
+
+    <div class="settings-section danger-zone">
+        <h2>Account Management</h2>
+        <form action="/account/delete" method="POST"
+            onsubmit="return confirm('Are you sure you want to delete your account? This cannot be undone.');">
+            <button type="submit" class="delete-button">Delete Account</button>
+        </form>
+    </div>
+</div>
+{{end}}
