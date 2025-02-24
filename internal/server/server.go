@@ -35,6 +35,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/create", s.AuthMiddleware(http.HandlerFunc(s.HandleCharacterCreate)))
 	mux.Handle("/characters/detail", s.AuthMiddleware(http.HandlerFunc(s.HandleCharacterDetail)))
 	mux.Handle("/characters/edit", s.AuthMiddleware(http.HandlerFunc(s.HandleCharacterEdit)))
+	mux.Handle("/characters/delete", s.AuthMiddleware(http.HandlerFunc(s.HandleDeleteCharacter)))
 
 	// Character status routes (protected)
 	mux.Handle("/characters/xp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateXP)))

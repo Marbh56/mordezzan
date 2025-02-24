@@ -1317,3 +1317,75 @@ func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d", characterID), http.StatusSeeOther)
 }
+
+func (s *Server) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for character deletion",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.Form.Get("character_id")))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify character exists and belongs to user before deletion
+	queries := db.New(s.db)
+	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+
+	if err != nil {
+		logger.Error("Character not found or doesn't belong to user",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Delete the character
+	err = queries.DeleteCharacter(r.Context(), db.DeleteCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+
+	if err != nil {
+		logger.Error("Failed to delete character",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
+		http.Error(w, "Error deleting character", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("Character deleted successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("user_id", user.UserID))
+
+	http.Redirect(w, r, "/characters?message=Character deleted successfully", http.StatusSeeOther)
+}
