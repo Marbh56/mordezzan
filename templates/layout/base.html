@@ -1,51 +1,51 @@
 <!-- templates/layout/base.html -->
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="stylesheet" href="../../static/css/styles-main.css" />
-        <title>{{block "title" .}}Mordezzan{{end}}</title>
-    </head>
-    <body>
-        <header>
-            <nav>
-                <div class="nav-brand">
-                    <a href="/">Mordezzan</a>
-                </div>
-                <div class="nav-links">
-                    {{if .IsAuthenticated}}
-                    <a href="/characters">My Characters</a>
-                    <form
-                        action="/logout"
-                        method="POST"
-                        style="display: inline"
-                    >
-                        <button type="submit">Logout</button>
-                    </form>
-                    {{else}}
-                    <a href="/login">Login</a>
-                    <a href="/register">Register</a>
-                    {{end}}
-                </div>
-            </nav>
-        </header>
 
-        <main>
-            <!-- Flash messages for user feedback -->
-            {{if .FlashMessage}}
-            <div class="flash-message">{{.FlashMessage}}</div>
-            {{end}}
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../../static/css/styles-main.css" />
+    <title>{{block "title" .}}Mordezzan{{end}}</title>
+</head>
 
-            <!-- This is where each page's content will go -->
-            {{block "content" .}}
-            <!-- Default content if none is provided -->
-            <p>Page content goes here</p>
-            {{end}}
-        </main>
+<body>
+    <header>
+        <nav>
+            <div class="nav-brand">
+                <a href="/">Mordezzan</a>
+            </div>
+            <div class="nav-links">
+                {{if .IsAuthenticated}}
+                <a href="/characters">My Characters</a>
+                <a href="/settings">Settings</a>
+                <form action="/logout" method="POST" style="display: inline">
+                    <button type="submit">Logout</button>
+                </form>
+                {{else}}
+                <a href="/login">Login</a>
+                <a href="/register">Register</a>
+                {{end}}
+            </div>
+        </nav>
+    </header>
 
-        <footer>
-            <p>&copy; {{.CurrentYear}} Mordezzan</p>
-        </footer>
-    </body>
+    <main>
+        <!-- Flash messages for user feedback -->
+        {{if .FlashMessage}}
+        <div class="flash-message">{{.FlashMessage}}</div>
+        {{end}}
+
+        <!-- This is where each page's content will go -->
+        {{block "content" .}}
+        <!-- Default content if none is provided -->
+        <p>Page content goes here</p>
+        {{end}}
+    </main>
+
+    <footer>
+        <p>&copy; {{.CurrentYear}} Mordezzan</p>
+    </footer>
+</body>
+
 </html>
