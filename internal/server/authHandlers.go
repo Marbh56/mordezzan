@@ -445,3 +445,101 @@ func (s *Server) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (s *Server) HandleUpdatePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	currentPassword := r.Form.Get("current_password")
+	newPassword := r.Form.Get("new_password")
+	confirmPassword := r.Form.Get("confirm_password")
+
+	// Validate input
+	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
+		logger.Warn("Password update attempt with missing fields",
+			zap.String("username", user.Username))
+		http.Redirect(w, r, "/settings?message=All fields are required", http.StatusSeeOther)
+		return
+	}
+
+	// Verify passwords match
+	if newPassword != confirmPassword {
+		logger.Warn("Password update attempt with mismatched passwords",
+			zap.String("username", user.Username))
+		http.Redirect(w, r, "/settings?message=New passwords do not match", http.StatusSeeOther)
+		return
+	}
+
+	// Validate password length
+	if len(newPassword) < 8 {
+		logger.Warn("Password update attempt with short password",
+			zap.String("username", user.Username),
+			zap.Int("password_length", len(newPassword)))
+		http.Redirect(w, r, "/settings?message=Password must be at least 8 characters", http.StatusSeeOther)
+		return
+	}
+
+	// Get user from database to verify current password
+	queries := db.New(s.db)
+	dbUser, err := queries.GetUserById(r.Context(), user.UserID)
+	if err != nil {
+		logger.Error("Failed to get user from database",
+			zap.Error(err),
+			zap.Int64("user_id", user.UserID))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify current password
+	err = bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(currentPassword))
+	if err != nil {
+		logger.Warn("Password update attempt with incorrect current password",
+			zap.String("username", user.Username))
+		http.Redirect(w, r, "/settings?message=Current password is incorrect", http.StatusSeeOther)
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Error("Failed to hash new password",
+			zap.Error(err),
+			zap.String("username", user.Username))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Update password in database
+	err = queries.UpdateUserPassword(r.Context(), db.UpdateUserPasswordParams{
+		ID:           user.UserID,
+		PasswordHash: string(hashedPassword),
+	})
+	if err != nil {
+		logger.Error("Failed to update password in database",
+			zap.Error(err),
+			zap.Int64("user_id", user.UserID))
+		http.Redirect(w, r, "/settings?message=Error updating password", http.StatusSeeOther)
+		return
+	}
+
+	logger.Info("User password updated successfully",
+		zap.String("username", user.Username))
+
+	http.Redirect(w, r, "/settings?message=Password updated successfully", http.StatusSeeOther)
+}

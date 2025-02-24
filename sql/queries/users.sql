@@ -47,3 +47,19 @@ WHERE
     id = ? 
     AND deleted_at IS NULL 
 RETURNING *;
+
+-- name: GetUserById :one
+SELECT *
+FROM users
+WHERE id = ?
+AND deleted_at IS NULL
+LIMIT 1;
+
+-- name: UpdateUserPassword :exec
+UPDATE users 
+SET 
+    password_hash = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE 
+    id = ? 
+    AND deleted_at IS NULL;

@@ -53,6 +53,8 @@ func (s *Server) Routes() http.Handler {
 	// User settings routes (protected)
 	mux.Handle("/settings", s.AuthMiddleware(http.HandlerFunc(s.HandleSettings)))
 	mux.Handle("/settings/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateUser)))
+	mux.Handle("/settings/update-password", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdatePassword)))
+	mux.Handle("/account/delete", s.AuthMiddleware(http.HandlerFunc(s.HandleAccountDelete)))
 
 	// Home page (protected)
 	mux.Handle("/", s.AuthMiddleware(http.HandlerFunc(s.HandleHome)))
