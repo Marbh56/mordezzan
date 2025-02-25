@@ -22,6 +22,10 @@ SELECT
         ELSE 0
     END as item_weight,
     CASE ci.item_type
+        WHEN 'weapon' THEN w.enhancement_bonus
+        ELSE NULL
+    END as enhancement_bonus,
+    CASE ci.item_type
         WHEN 'armor' THEN a.movement_rate
         ELSE NULL
     END as movement_rate,

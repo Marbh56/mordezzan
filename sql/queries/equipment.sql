@@ -15,7 +15,7 @@ FROM equipment
 ORDER BY name;
 
 -- name: GetWeaponItems :many
-SELECT id, name, cost_gp as cost, weight
+SELECT id, name, cost_gp as cost, weight, enhancement_bonus
 FROM weapons
 ORDER BY name;
 

@@ -38,4 +38,15 @@ VALUES
     ('Pick, Horseman''s', 1, 5, 3, NULL, NULL, NULL, NULL, '1d6', 0),
     ('Pick, War', 2, 15, 5, NULL, NULL, NULL, NULL, '1d8 (1d10)', 0),
     ('Pike', 6, 7, 12, NULL, NULL, NULL, NULL, '1d8', 0),
-    ('Quarterstaff', 3, 5, 5, NULL, NULL, NULL, NULL, '1d6', 0)
+    ('Quarterstaff', 3, 5, 5, NULL, NULL, NULL, NULL, '1d6', 0);
+
+-- +goose Down
+DELETE FROM weapons 
+WHERE name IN (
+    'Axe, Hand', 'Axe, Battle', 'Axe, Great', 'Cæstuses', 'Chain Whip',
+    'Club, Light', 'Club, War', 'Dagger', 'Dagger, Silver', 'Falcata',
+    'Flail, Horseman''s', 'Flail, Footman''s', 'Halberd', 'Hammer, Horseman''s',
+    'Hammer, War', 'Hammer, Great', 'Javelin', 'Lance', 'Mace, Horseman''s',
+    'Mace, Footman''s', 'Mace, Great', 'Morning Star', 'Pick, Horseman''s', 
+    'Pick, War', 'Pike', 'Quarterstaff'
+);
