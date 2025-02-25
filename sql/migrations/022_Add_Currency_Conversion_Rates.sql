@@ -1,19 +1,4 @@
 -- +goose Up
-ALTER TABLE characters
-ADD COLUMN platinum_pieces INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE characters
-ADD COLUMN gold_pieces INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE characters
-ADD COLUMN electrum_pieces INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE characters
-ADD COLUMN silver_pieces INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE characters
-ADD COLUMN copper_pieces INTEGER NOT NULL DEFAULT 0;
-
 -- Create a table to store currency conversion rates
 CREATE TABLE currency_conversion_rates (
     from_currency TEXT NOT NULL,
@@ -59,18 +44,3 @@ VALUES
 
 -- +goose Down
 DROP TABLE IF EXISTS currency_conversion_rates;
-
-ALTER TABLE characters
-DROP COLUMN platinum_pieces;
-
-ALTER TABLE characters
-DROP COLUMN gold_pieces;
-
-ALTER TABLE characters
-DROP COLUMN electrum_pieces;
-
-ALTER TABLE characters
-DROP COLUMN silver_pieces;
-
-ALTER TABLE characters
-DROP COLUMN copper_pieces;

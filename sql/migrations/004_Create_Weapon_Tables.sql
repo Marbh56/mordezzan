@@ -1,5 +1,4 @@
 -- +goose Up
--- Create tables
 CREATE TABLE weapon_properties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
@@ -17,6 +16,8 @@ CREATE TABLE weapons (
     range_long INTEGER,
     attacks_per_round TEXT,
     damage TEXT NOT NULL,
+    enhancement_bonus INTEGER DEFAULT NULL,
+    magical_properties TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
