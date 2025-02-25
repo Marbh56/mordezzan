@@ -26,6 +26,7 @@ CREATE TABLE ranged_weapons (
     range_medium INTEGER,
     range_long INTEGER,
     damage TEXT,
+    enhancement_bonus INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -215,6 +216,202 @@ VALUES
         '1d6'
     );
 
+-- Insert magical ranged weapons
+INSERT INTO
+    ranged_weapons (
+        name,
+        weapon_type,
+        cost_gp,
+        weight,
+        rate_of_fire,
+        range_short,
+        range_medium,
+        range_long,
+        damage,
+        enhancement_bonus
+    )
+VALUES
+    (
+        'Bow, Long- +1',
+        'Launched',
+        2060,
+        3,
+        '3/2',
+        70,
+        140,
+        210,
+        '1d6',
+        1
+    ),
+    (
+        'Bow, Long- +2',
+        'Launched',
+        8060,
+        3,
+        '3/2',
+        70,
+        140,
+        210,
+        '1d6',
+        2
+    ),
+    (
+        'Bow, Long- +3',
+        'Launched',
+        18060,
+        3,
+        '3/2',
+        70,
+        140,
+        210,
+        '1d6',
+        3
+    ),
+    (
+        'Bow, Long-, Composite +1',
+        'Launched',
+        2100,
+        3,
+        '3/2',
+        80,
+        160,
+        240,
+        '1d6',
+        1
+    ),
+    (
+        'Bow, Long-, Composite +2',
+        'Launched',
+        8100,
+        3,
+        '3/2',
+        80,
+        160,
+        240,
+        '1d6',
+        2
+    ),
+    (
+        'Bow, Long-, Composite +3',
+        'Launched',
+        18100,
+        3,
+        '3/2',
+        80,
+        160,
+        240,
+        '1d6',
+        3
+    ),
+    (
+        'Bow, Short +1',
+        'Launched',
+        2020,
+        2,
+        '3/2',
+        50,
+        100,
+        150,
+        '1d6',
+        1
+    ),
+    (
+        'Bow, Short +2',
+        'Launched',
+        8020,
+        2,
+        '3/2',
+        50,
+        100,
+        150,
+        '1d6',
+        2
+    ),
+    (
+        'Bow, Short +3',
+        'Launched',
+        18020,
+        2,
+        '3/2',
+        50,
+        100,
+        150,
+        '1d6',
+        3
+    ),
+    (
+        'Crossbow, Light +1',
+        'Launched',
+        2015,
+        5,
+        '1/1',
+        60,
+        120,
+        180,
+        '1d6+1',
+        1
+    ),
+    (
+        'Crossbow, Light +2',
+        'Launched',
+        8015,
+        5,
+        '1/1',
+        60,
+        120,
+        180,
+        '1d6+1',
+        2
+    ),
+    (
+        'Crossbow, Light +3',
+        'Launched',
+        18015,
+        5,
+        '1/1',
+        60,
+        120,
+        180,
+        '1d6+1',
+        3
+    ),
+    (
+        'Crossbow, Heavy +1',
+        'Launched',
+        2025,
+        10,
+        '1/2',
+        80,
+        160,
+        240,
+        '1d6+2',
+        1
+    ),
+    (
+        'Crossbow, Heavy +2',
+        'Launched',
+        8025,
+        10,
+        '1/2',
+        80,
+        160,
+        240,
+        '1d6+2',
+        2
+    ),
+    (
+        'Crossbow, Heavy +3',
+        'Launched',
+        18025,
+        10,
+        '1/2',
+        80,
+        160,
+        240,
+        '1d6+2',
+        3
+    );
+
 -- Link properties to weapons
 INSERT INTO
     ranged_weapon_property_links
@@ -226,7 +423,8 @@ FROM
     ranged_weapon_properties rwp
 WHERE
     rw.name IN ('Bola', 'Boomerang', 'Dart', 'Stone', 'Sling')
-    AND rwp.symbol = '⤢';
+    AND rwp.symbol = '⤢'
+    AND rw.enhancement_bonus = 0;
 
 INSERT INTO
     ranged_weapon_property_links
@@ -238,7 +436,8 @@ FROM
     ranged_weapon_properties rwp
 WHERE
     rw.name = 'Hooked Throwing Knife'
-    AND rwp.symbol IN ('⤢', '↵');
+    AND rwp.symbol IN ('⤢', '↵')
+    AND rw.enhancement_bonus = 0;
 
 INSERT INTO
     ranged_weapon_property_links
@@ -250,7 +449,8 @@ FROM
     ranged_weapon_properties rwp
 WHERE
     rw.name IN ('Bow, Long-', 'Bow, Long-, Composite')
-    AND rwp.symbol = '⤤';
+    AND rwp.symbol = '⤤'
+    AND rw.enhancement_bonus = 0;
 
 -- +goose Down
 DROP TABLE IF EXISTS ranged_weapon_property_links;
