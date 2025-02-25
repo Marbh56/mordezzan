@@ -30,8 +30,7 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles(
 		"templates/layout/base.html",
-		"templates/layout/navbar.html",
-		"templates/auth/settings.html",
+		"templates/auth/registration.html",
 	)
 
 	if err != nil {
