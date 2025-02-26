@@ -15,20 +15,20 @@ const addItemToInventory = `-- name: AddItemToInventory :one
 INSERT INTO
     character_inventory (
         character_id,
-        item_type,
         item_id,
+        item_type,
         quantity,
-        container_inventory_id,
+        container_id,
         equipment_slot_id,
         notes
     )
 VALUES
     (?, ?, ?, ?, ?, ?, ?) RETURNING id,
     character_id,
-    item_type,
     item_id,
+    item_type,
     quantity,
-    container_inventory_id,
+    container_id,
     equipment_slot_id,
     notes,
     created_at,
@@ -36,35 +36,35 @@ VALUES
 `
 
 type AddItemToInventoryParams struct {
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Notes           sql.NullString `json:"notes"`
 }
 
 type AddItemToInventoryRow struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventoryParams) (AddItemToInventoryRow, error) {
 	row := q.db.QueryRowContext(ctx, addItemToInventory,
 		arg.CharacterID,
-		arg.ItemType,
 		arg.ItemID,
+		arg.ItemType,
 		arg.Quantity,
-		arg.ContainerInventoryID,
+		arg.ContainerID,
 		arg.EquipmentSlotID,
 		arg.Notes,
 	)
@@ -72,10 +72,10 @@ func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventory
 	err := row.Scan(
 		&i.ID,
 		&i.CharacterID,
-		&i.ItemType,
 		&i.ItemID,
+		&i.ItemType,
 		&i.Quantity,
-		&i.ContainerInventoryID,
+		&i.ContainerID,
 		&i.EquipmentSlotID,
 		&i.Notes,
 		&i.CreatedAt,
@@ -84,102 +84,164 @@ func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventory
 	return i, err
 }
 
+const equipItem = `-- name: EquipItem :exec
+UPDATE character_inventory
+SET 
+    equipment_slot_id = ?,
+    container_id = NULL
+WHERE 
+    id = ?
+    AND character_id = ?
+`
+
+type EquipItemParams struct {
+	EquipmentSlotID sql.NullInt64 `json:"equipment_slot_id"`
+	ID              int64         `json:"id"`
+	CharacterID     int64         `json:"character_id"`
+}
+
+func (q *Queries) EquipItem(ctx context.Context, arg EquipItemParams) error {
+	_, err := q.db.ExecContext(ctx, equipItem, arg.EquipmentSlotID, arg.ID, arg.CharacterID)
+	return err
+}
+
+const findStackableItemInContainer = `-- name: FindStackableItemInContainer :one
+SELECT 
+    id, quantity
+FROM 
+    character_inventory
+WHERE 
+    character_id = ?
+    AND item_id = ?
+    AND item_type = ?
+    AND container_id = ?
+LIMIT 1
+`
+
+type FindStackableItemInContainerParams struct {
+	CharacterID int64         `json:"character_id"`
+	ItemID      int64         `json:"item_id"`
+	ItemType    string        `json:"item_type"`
+	ContainerID sql.NullInt64 `json:"container_id"`
+}
+
+type FindStackableItemInContainerRow struct {
+	ID       int64 `json:"id"`
+	Quantity int64 `json:"quantity"`
+}
+
+func (q *Queries) FindStackableItemInContainer(ctx context.Context, arg FindStackableItemInContainerParams) (FindStackableItemInContainerRow, error) {
+	row := q.db.QueryRowContext(ctx, findStackableItemInContainer,
+		arg.CharacterID,
+		arg.ItemID,
+		arg.ItemType,
+		arg.ContainerID,
+	)
+	var i FindStackableItemInContainerRow
+	err := row.Scan(&i.ID, &i.Quantity)
+	return i, err
+}
+
+const findStackableItemInInventory = `-- name: FindStackableItemInInventory :one
+SELECT 
+    id, quantity
+FROM 
+    character_inventory
+WHERE 
+    character_id = ?
+    AND item_id = ?
+    AND item_type = ?
+    AND container_id IS NULL
+    AND equipment_slot_id IS NULL
+LIMIT 1
+`
+
+type FindStackableItemInInventoryParams struct {
+	CharacterID int64  `json:"character_id"`
+	ItemID      int64  `json:"item_id"`
+	ItemType    string `json:"item_type"`
+}
+
+type FindStackableItemInInventoryRow struct {
+	ID       int64 `json:"id"`
+	Quantity int64 `json:"quantity"`
+}
+
+func (q *Queries) FindStackableItemInInventory(ctx context.Context, arg FindStackableItemInInventoryParams) (FindStackableItemInInventoryRow, error) {
+	row := q.db.QueryRowContext(ctx, findStackableItemInInventory, arg.CharacterID, arg.ItemID, arg.ItemType)
+	var i FindStackableItemInInventoryRow
+	err := row.Scan(&i.ID, &i.Quantity)
+	return i, err
+}
+
 const getCharacterInventory = `-- name: GetCharacterInventory :many
-SELECT
-    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at, ci.magical_weapon_id,
-    es.name as slot_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.name
-        WHEN 'weapon' THEN w.name
-        WHEN 'armor' THEN a.name
-        WHEN 'ammunition' THEN am.name
-        WHEN 'container' THEN c.name
-        WHEN 'shield' THEN s.name
-        WHEN 'ranged_weapon' THEN rw.name
+SELECT 
+    ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
+    ci.container_id, ci.equipment_slot_id, ci.notes,
+    ci.created_at, ci.updated_at,
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.name
+        WHEN ci.item_type = 'weapon' THEN w.name
+        WHEN ci.item_type = 'armor' THEN a.name
+        WHEN ci.item_type = 'ammunition' THEN am.name
+        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'shield' THEN s.name
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.weight
-        WHEN 'weapon' THEN w.weight
-        WHEN 'armor' THEN a.weight
-        WHEN 'ammunition' THEN am.weight
-        WHEN 'container' THEN c.weight
-        WHEN 'shield' THEN s.weight
-        WHEN 'ranged_weapon' THEN rw.weight
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.weight
+        WHEN ci.item_type = 'weapon' THEN w.weight
+        WHEN ci.item_type = 'armor' THEN a.weight
+        WHEN ci.item_type = 'ammunition' THEN am.weight
+        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'shield' THEN s.weight
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight,
-    CASE ci.item_type
-        WHEN 'armor' THEN a.movement_rate
+    es.name as slot_name,
+    CASE 
+        WHEN ci.item_type = 'container' THEN c.capacity_weight
         ELSE NULL
-    END as movement_rate,
-    CASE ci.item_type
-        WHEN 'armor' THEN a.armor_class
+    END as container_capacity,
+    CASE 
+        WHEN ci.item_type = 'container' THEN c.capacity_items
         ELSE NULL
-    END as armor_class,
-    CASE ci.item_type
-        WHEN 'shield' THEN s.defense_bonus
-        ELSE NULL
-    END as defense_bonus,
-    COALESCE(
-        CASE ci.item_type
-            WHEN 'weapon' THEN CAST(w.damage AS TEXT)
-            WHEN 'ranged_weapon' THEN CAST(rw.damage AS TEXT)
-            ELSE NULL
-        END,
-        NULL
-    ) as damage,
-    COALESCE(
-        CASE ci.item_type
-            WHEN 'weapon' THEN CAST(w.attacks_per_round AS TEXT)
-            WHEN 'ranged_weapon' THEN CAST(rw.rate_of_fire AS TEXT)
-            ELSE NULL
-        END,
-        NULL
-    ) as attacks_per_round
-FROM
+    END as container_max_items
+FROM 
     character_inventory ci
     LEFT JOIN equipment_slots es ON ci.equipment_slot_id = es.id
-    LEFT JOIN equipment e ON ci.item_type = 'equipment'
-    AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon'
-    AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor'
-    AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition'
-    AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container'
-    AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield'
-    AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon'
-    AND ci.item_id = rw.id
-WHERE
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
     ci.character_id = ?
-ORDER BY
-    ci.container_inventory_id NULLS FIRST,
-    ci.equipment_slot_id NULLS LAST,
+ORDER BY 
+    ci.equipment_slot_id IS NULL, 
+    es.name,
+    ci.container_id IS NOT NULL,
     item_name
 `
 
 type GetCharacterInventoryRow struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
-	SlotName             sql.NullString `json:"slot_name"`
-	ItemName             interface{}    `json:"item_name"`
-	ItemWeight           int64          `json:"item_weight"`
-	MovementRate         interface{}    `json:"movement_rate"`
-	ArmorClass           interface{}    `json:"armor_class"`
-	DefenseBonus         interface{}    `json:"defense_bonus"`
-	Damage               interface{}    `json:"damage"`
-	AttacksPerRound      interface{}    `json:"attacks_per_round"`
+	ID                int64          `json:"id"`
+	CharacterID       int64          `json:"character_id"`
+	ItemID            int64          `json:"item_id"`
+	ItemType          string         `json:"item_type"`
+	Quantity          int64          `json:"quantity"`
+	ContainerID       sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID   sql.NullInt64  `json:"equipment_slot_id"`
+	Notes             sql.NullString `json:"notes"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	ItemName          interface{}    `json:"item_name"`
+	ItemWeight        int64          `json:"item_weight"`
+	SlotName          sql.NullString `json:"slot_name"`
+	ContainerCapacity interface{}    `json:"container_capacity"`
+	ContainerMaxItems interface{}    `json:"container_max_items"`
 }
 
 func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) ([]GetCharacterInventoryRow, error) {
@@ -194,23 +256,19 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.CharacterID,
-			&i.ItemType,
 			&i.ItemID,
+			&i.ItemType,
 			&i.Quantity,
-			&i.ContainerInventoryID,
+			&i.ContainerID,
 			&i.EquipmentSlotID,
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.MagicalWeaponID,
-			&i.SlotName,
 			&i.ItemName,
 			&i.ItemWeight,
-			&i.MovementRate,
-			&i.ArmorClass,
-			&i.DefenseBonus,
-			&i.Damage,
-			&i.AttacksPerRound,
+			&i.SlotName,
+			&i.ContainerCapacity,
+			&i.ContainerMaxItems,
 		); err != nil {
 			return nil, err
 		}
@@ -225,74 +283,93 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 	return items, nil
 }
 
+const getContainerCapacity = `-- name: GetContainerCapacity :one
+SELECT 
+    c.capacity_weight,
+    c.capacity_items
+FROM 
+    character_inventory ci
+JOIN 
+    containers c ON ci.item_id = c.base_item_id
+WHERE 
+    ci.id = ?
+    AND ci.item_type = 'container'
+`
+
+type GetContainerCapacityRow struct {
+	CapacityWeight float64       `json:"capacity_weight"`
+	CapacityItems  sql.NullInt64 `json:"capacity_items"`
+}
+
+func (q *Queries) GetContainerCapacity(ctx context.Context, id int64) (GetContainerCapacityRow, error) {
+	row := q.db.QueryRowContext(ctx, getContainerCapacity, id)
+	var i GetContainerCapacityRow
+	err := row.Scan(&i.CapacityWeight, &i.CapacityItems)
+	return i, err
+}
+
 const getContainerContents = `-- name: GetContainerContents :many
-SELECT
-    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at, ci.magical_weapon_id,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.name
-        WHEN 'weapon' THEN w.name
-        WHEN 'armor' THEN a.name
-        WHEN 'ammunition' THEN am.name
-        WHEN 'container' THEN c.name
-        WHEN 'shield' THEN s.name
-        WHEN 'ranged_weapon' THEN rw.name
+SELECT 
+    ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
+    ci.container_id, ci.equipment_slot_id, ci.notes,
+    ci.created_at, ci.updated_at,
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.name
+        WHEN ci.item_type = 'weapon' THEN w.name
+        WHEN ci.item_type = 'armor' THEN a.name
+        WHEN ci.item_type = 'ammunition' THEN am.name
+        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'shield' THEN s.name
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.weight
-        WHEN 'weapon' THEN w.weight
-        WHEN 'armor' THEN a.weight
-        WHEN 'ammunition' THEN am.weight
-        WHEN 'container' THEN c.weight
-        WHEN 'shield' THEN s.weight
-        WHEN 'ranged_weapon' THEN rw.weight
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.weight
+        WHEN ci.item_type = 'weapon' THEN w.weight
+        WHEN ci.item_type = 'armor' THEN a.weight
+        WHEN ci.item_type = 'ammunition' THEN am.weight
+        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'shield' THEN s.weight
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight
-FROM
+FROM 
     character_inventory ci
-    LEFT JOIN equipment e ON ci.item_type = 'equipment'
-    AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon'
-    AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor'
-    AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition'
-    AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container'
-    AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield'
-    AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon'
-    AND ci.item_id = rw.id
-WHERE
-    ci.container_inventory_id = ?
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
+    ci.container_id = ?
     AND ci.character_id = ?
-ORDER BY
+ORDER BY 
     item_name
 `
 
 type GetContainerContentsParams struct {
-	ContainerInventoryID sql.NullInt64 `json:"container_inventory_id"`
-	CharacterID          int64         `json:"character_id"`
+	ContainerID sql.NullInt64 `json:"container_id"`
+	CharacterID int64         `json:"character_id"`
 }
 
 type GetContainerContentsRow struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
-	ItemName             interface{}    `json:"item_name"`
-	ItemWeight           int64          `json:"item_weight"`
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	ItemName        interface{}    `json:"item_name"`
+	ItemWeight      int64          `json:"item_weight"`
 }
 
 func (q *Queries) GetContainerContents(ctx context.Context, arg GetContainerContentsParams) ([]GetContainerContentsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getContainerContents, arg.ContainerInventoryID, arg.CharacterID)
+	rows, err := q.db.QueryContext(ctx, getContainerContents, arg.ContainerID, arg.CharacterID)
 	if err != nil {
 		return nil, err
 	}
@@ -303,15 +380,14 @@ func (q *Queries) GetContainerContents(ctx context.Context, arg GetContainerCont
 		if err := rows.Scan(
 			&i.ID,
 			&i.CharacterID,
-			&i.ItemType,
 			&i.ItemID,
+			&i.ItemType,
 			&i.Quantity,
-			&i.ContainerInventoryID,
+			&i.ContainerID,
 			&i.EquipmentSlotID,
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.MagicalWeaponID,
 			&i.ItemName,
 			&i.ItemWeight,
 		); err != nil {
@@ -328,46 +404,74 @@ func (q *Queries) GetContainerContents(ctx context.Context, arg GetContainerCont
 	return items, nil
 }
 
+const getContainerWeight = `-- name: GetContainerWeight :one
+SELECT 
+    COALESCE(SUM(
+        CASE 
+            WHEN ci.item_type = 'equipment' THEN e.weight * ci.quantity
+            WHEN ci.item_type = 'weapon' THEN w.weight * ci.quantity
+            WHEN ci.item_type = 'armor' THEN a.weight * ci.quantity
+            WHEN ci.item_type = 'ammunition' THEN COALESCE(am.weight, 0) * ci.quantity
+            WHEN ci.item_type = 'container' THEN COALESCE(c.weight, 0) * ci.quantity
+            WHEN ci.item_type = 'shield' THEN s.weight * ci.quantity
+            WHEN ci.item_type = 'ranged_weapon' THEN rw.weight * ci.quantity
+            ELSE 0
+        END
+    ), 0) as total_weight
+FROM 
+    character_inventory ci
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
+    ci.container_id = ?
+`
+
+func (q *Queries) GetContainerWeight(ctx context.Context, containerID sql.NullInt64) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getContainerWeight, containerID)
+	var total_weight interface{}
+	err := row.Scan(&total_weight)
+	return total_weight, err
+}
+
 const getEquippedItems = `-- name: GetEquippedItems :many
 SELECT
-    ci.id, ci.character_id, ci.item_type, ci.item_id, ci.quantity, ci.container_inventory_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at, ci.magical_weapon_id,
+    ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
+    ci.container_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at,
     es.name as slot_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.name
-        WHEN 'weapon' THEN w.name
-        WHEN 'armor' THEN a.name
-        WHEN 'ammunition' THEN am.name
-        WHEN 'container' THEN c.name
-        WHEN 'shield' THEN s.name
-        WHEN 'ranged_weapon' THEN rw.name
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.name
+        WHEN ci.item_type = 'weapon' THEN w.name
+        WHEN ci.item_type = 'armor' THEN a.name
+        WHEN ci.item_type = 'ammunition' THEN am.name
+        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'shield' THEN s.name
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.weight
-        WHEN 'weapon' THEN w.weight
-        WHEN 'armor' THEN a.weight
-        WHEN 'ammunition' THEN am.weight
-        WHEN 'container' THEN c.weight
-        WHEN 'shield' THEN s.weight
-        WHEN 'ranged_weapon' THEN rw.weight
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.weight
+        WHEN ci.item_type = 'weapon' THEN w.weight
+        WHEN ci.item_type = 'armor' THEN a.weight
+        WHEN ci.item_type = 'ammunition' THEN am.weight
+        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'shield' THEN s.weight
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight
 FROM
     character_inventory ci
     JOIN equipment_slots es ON ci.equipment_slot_id = es.id
-    LEFT JOIN equipment e ON ci.item_type = 'equipment'
-    AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon'
-    AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor'
-    AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition'
-    AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container'
-    AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield'
-    AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon'
-    AND ci.item_id = rw.id
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
 WHERE
     ci.character_id = ?
     AND ci.equipment_slot_id IS NOT NULL
@@ -376,20 +480,19 @@ ORDER BY
 `
 
 type GetEquippedItemsRow struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
-	SlotName             string         `json:"slot_name"`
-	ItemName             interface{}    `json:"item_name"`
-	ItemWeight           int64          `json:"item_weight"`
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	SlotName        string         `json:"slot_name"`
+	ItemName        interface{}    `json:"item_name"`
+	ItemWeight      int64          `json:"item_weight"`
 }
 
 func (q *Queries) GetEquippedItems(ctx context.Context, characterID int64) ([]GetEquippedItemsRow, error) {
@@ -404,15 +507,14 @@ func (q *Queries) GetEquippedItems(ctx context.Context, characterID int64) ([]Ge
 		if err := rows.Scan(
 			&i.ID,
 			&i.CharacterID,
-			&i.ItemType,
 			&i.ItemID,
+			&i.ItemType,
 			&i.Quantity,
-			&i.ContainerInventoryID,
+			&i.ContainerID,
 			&i.EquipmentSlotID,
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.MagicalWeaponID,
 			&i.SlotName,
 			&i.ItemName,
 			&i.ItemWeight,
@@ -430,40 +532,64 @@ func (q *Queries) GetEquippedItems(ctx context.Context, characterID int64) ([]Ge
 	return items, nil
 }
 
-const getItemFromInventory = `-- name: GetItemFromInventory :one
-SELECT
-    id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at, magical_weapon_id
-FROM
+const isSlotOccupied = `-- name: IsSlotOccupied :one
+SELECT 
+    COUNT(*) > 0 as is_occupied
+FROM 
     character_inventory
-WHERE
-    id = ?
-    AND character_id = ?
-LIMIT
-    1
+WHERE 
+    character_id = ? 
+    AND equipment_slot_id = ?
 `
 
-type GetItemFromInventoryParams struct {
+type IsSlotOccupiedParams struct {
+	CharacterID     int64         `json:"character_id"`
+	EquipmentSlotID sql.NullInt64 `json:"equipment_slot_id"`
+}
+
+func (q *Queries) IsSlotOccupied(ctx context.Context, arg IsSlotOccupiedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isSlotOccupied, arg.CharacterID, arg.EquipmentSlotID)
+	var is_occupied bool
+	err := row.Scan(&is_occupied)
+	return is_occupied, err
+}
+
+const moveItemToContainer = `-- name: MoveItemToContainer :exec
+UPDATE character_inventory
+SET 
+    container_id = ?,
+    equipment_slot_id = NULL
+WHERE 
+    id = ?
+    AND character_id = ?
+`
+
+type MoveItemToContainerParams struct {
+	ContainerID sql.NullInt64 `json:"container_id"`
+	ID          int64         `json:"id"`
+	CharacterID int64         `json:"character_id"`
+}
+
+func (q *Queries) MoveItemToContainer(ctx context.Context, arg MoveItemToContainerParams) error {
+	_, err := q.db.ExecContext(ctx, moveItemToContainer, arg.ContainerID, arg.ID, arg.CharacterID)
+	return err
+}
+
+const reduceStackQuantity = `-- name: ReduceStackQuantity :exec
+UPDATE character_inventory
+SET quantity = quantity - ?
+WHERE id = ? AND character_id = ?
+`
+
+type ReduceStackQuantityParams struct {
+	Quantity    int64 `json:"quantity"`
 	ID          int64 `json:"id"`
 	CharacterID int64 `json:"character_id"`
 }
 
-func (q *Queries) GetItemFromInventory(ctx context.Context, arg GetItemFromInventoryParams) (CharacterInventory, error) {
-	row := q.db.QueryRowContext(ctx, getItemFromInventory, arg.ID, arg.CharacterID)
-	var i CharacterInventory
-	err := row.Scan(
-		&i.ID,
-		&i.CharacterID,
-		&i.ItemType,
-		&i.ItemID,
-		&i.Quantity,
-		&i.ContainerInventoryID,
-		&i.EquipmentSlotID,
-		&i.Notes,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.MagicalWeaponID,
-	)
-	return i, err
+func (q *Queries) ReduceStackQuantity(ctx context.Context, arg ReduceStackQuantityParams) error {
+	_, err := q.db.ExecContext(ctx, reduceStackQuantity, arg.Quantity, arg.ID, arg.CharacterID)
+	return err
 }
 
 const removeItemFromInventory = `-- name: RemoveItemFromInventory :exec
@@ -483,50 +609,139 @@ func (q *Queries) RemoveItemFromInventory(ctx context.Context, arg RemoveItemFro
 	return err
 }
 
+const splitStack = `-- name: SplitStack :exec
+INSERT INTO character_inventory (
+    character_id, 
+    item_id,
+    item_type,
+    quantity,
+    container_id,
+    equipment_slot_id,
+    notes,
+    created_at,
+    updated_at
+)
+SELECT 
+    ci.character_id,
+    ci.item_id,
+    ci.item_type,
+    ?,
+    ci.container_id,
+    NULL,
+    ci.notes,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM 
+    character_inventory ci
+WHERE 
+    ci.id = ?
+`
+
+type SplitStackParams struct {
+	Quantity int64 `json:"quantity"`
+	ID       int64 `json:"id"`
+}
+
+func (q *Queries) SplitStack(ctx context.Context, arg SplitStackParams) error {
+	_, err := q.db.ExecContext(ctx, splitStack, arg.Quantity, arg.ID)
+	return err
+}
+
+const unequipItem = `-- name: UnequipItem :exec
+UPDATE character_inventory
+SET 
+    equipment_slot_id = NULL
+WHERE 
+    id = ?
+    AND character_id = ?
+`
+
+type UnequipItemParams struct {
+	ID          int64 `json:"id"`
+	CharacterID int64 `json:"character_id"`
+}
+
+func (q *Queries) UnequipItem(ctx context.Context, arg UnequipItemParams) error {
+	_, err := q.db.ExecContext(ctx, unequipItem, arg.ID, arg.CharacterID)
+	return err
+}
+
 const updateInventoryItem = `-- name: UpdateInventoryItem :one
 UPDATE character_inventory
 SET
     quantity = ?,
-    container_inventory_id = ?,
+    container_id = ?,
     equipment_slot_id = ?,
     notes = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?
-    AND character_id = ? RETURNING id, character_id, item_type, item_id, quantity, container_inventory_id, equipment_slot_id, notes, created_at, updated_at, magical_weapon_id
+    AND character_id = ? RETURNING id, character_id, item_id, item_type, quantity, container_id, equipment_slot_id, notes, created_at, updated_at
 `
 
 type UpdateInventoryItemParams struct {
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Notes           sql.NullString `json:"notes"`
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
 }
 
-func (q *Queries) UpdateInventoryItem(ctx context.Context, arg UpdateInventoryItemParams) (CharacterInventory, error) {
+type UpdateInventoryItemRow struct {
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) UpdateInventoryItem(ctx context.Context, arg UpdateInventoryItemParams) (UpdateInventoryItemRow, error) {
 	row := q.db.QueryRowContext(ctx, updateInventoryItem,
 		arg.Quantity,
-		arg.ContainerInventoryID,
+		arg.ContainerID,
 		arg.EquipmentSlotID,
 		arg.Notes,
 		arg.ID,
 		arg.CharacterID,
 	)
-	var i CharacterInventory
+	var i UpdateInventoryItemRow
 	err := row.Scan(
 		&i.ID,
 		&i.CharacterID,
-		&i.ItemType,
 		&i.ItemID,
+		&i.ItemType,
 		&i.Quantity,
-		&i.ContainerInventoryID,
+		&i.ContainerID,
 		&i.EquipmentSlotID,
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.MagicalWeaponID,
 	)
 	return i, err
+}
+
+const updateItemQuantity = `-- name: UpdateItemQuantity :exec
+UPDATE character_inventory
+SET 
+    quantity = ?
+WHERE 
+    id = ?
+    AND character_id = ?
+`
+
+type UpdateItemQuantityParams struct {
+	Quantity    int64 `json:"quantity"`
+	ID          int64 `json:"id"`
+	CharacterID int64 `json:"character_id"`
+}
+
+func (q *Queries) UpdateItemQuantity(ctx context.Context, arg UpdateItemQuantityParams) error {
+	_, err := q.db.ExecContext(ctx, updateItemQuantity, arg.Quantity, arg.ID, arg.CharacterID)
+	return err
 }

@@ -20,12 +20,12 @@ CREATE TABLE item_tags (
     FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
 );
 
--- Create improved containers table
+-- Create containers table
 CREATE TABLE containers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     base_item_id INTEGER NOT NULL,
-    capacity REAL NOT NULL,
-    max_items INTEGER,
+    capacity_weight REAL NOT NULL,
+    capacity_items INTEGER,
     container_type TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -40,7 +40,7 @@ CREATE TABLE container_allowed_tags (
     FOREIGN KEY (container_id) REFERENCES containers (id) ON DELETE CASCADE
 );
 
--- Create improved character inventory table
+-- Create character inventory table
 CREATE TABLE character_inventory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     character_id INTEGER NOT NULL,
@@ -60,30 +60,37 @@ CREATE TABLE character_inventory (
     ),
     quantity INTEGER NOT NULL DEFAULT 1,
     container_id INTEGER,
-    slot_id INTEGER,
+    equipment_slot_id INTEGER,
     position TEXT,
     custom_name TEXT,
     custom_notes TEXT,
     is_identified BOOLEAN NOT NULL DEFAULT 1,
     charges INTEGER,
     condition TEXT NOT NULL DEFAULT 'good',
+    notes TEXT, -- Keep this for backward compatibility 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (character_id) REFERENCES characters (id) ON DELETE CASCADE,
     FOREIGN KEY (container_id) REFERENCES character_inventory (id) ON DELETE SET NULL,
-    FOREIGN KEY (slot_id) REFERENCES equipment_slots (id) ON DELETE SET NULL,
+    FOREIGN KEY (equipment_slot_id) REFERENCES equipment_slots (id) ON DELETE SET NULL,
     FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
 );
 
 -- Create indexes for better performance
 CREATE INDEX idx_character_inventory_character_id ON character_inventory (character_id);
 CREATE INDEX idx_character_inventory_container_id ON character_inventory (container_id);
-CREATE INDEX idx_character_inventory_slot_id ON character_inventory (slot_id);
+CREATE INDEX idx_character_inventory_equipment_slot_id ON character_inventory (equipment_slot_id);
 CREATE INDEX idx_character_inventory_item_type ON character_inventory (item_type);
 CREATE INDEX idx_item_tags_tag ON item_tags (tag);
 
 -- +goose Down
 -- Drop all tables in reverse order
+DROP INDEX IF EXISTS idx_character_inventory_character_id;
+DROP INDEX IF EXISTS idx_character_inventory_container_id;
+DROP INDEX IF EXISTS idx_character_inventory_equipment_slot_id;
+DROP INDEX IF EXISTS idx_character_inventory_item_type;
+DROP INDEX IF EXISTS idx_item_tags_tag;
+
 DROP TABLE IF EXISTS character_inventory;
 DROP TABLE IF EXISTS container_allowed_tags;
 DROP TABLE IF EXISTS containers;

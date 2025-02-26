@@ -1,127 +1,139 @@
 -- name: GetCharacterInventory :many
-SELECT
-    ci.*,
-    es.name as slot_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.name
-        WHEN 'weapon' THEN w.name
-        WHEN 'armor' THEN a.name
-        WHEN 'ammunition' THEN am.name
-        WHEN 'container' THEN c.name
-        WHEN 'shield' THEN s.name
-        WHEN 'ranged_weapon' THEN rw.name
+SELECT 
+    ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
+    ci.container_id, ci.equipment_slot_id, ci.notes,
+    ci.created_at, ci.updated_at,
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.name
+        WHEN ci.item_type = 'weapon' THEN w.name
+        WHEN ci.item_type = 'armor' THEN a.name
+        WHEN ci.item_type = 'ammunition' THEN am.name
+        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'shield' THEN s.name
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.weight
-        WHEN 'weapon' THEN w.weight
-        WHEN 'armor' THEN a.weight
-        WHEN 'ammunition' THEN am.weight
-        WHEN 'container' THEN c.weight
-        WHEN 'shield' THEN s.weight
-        WHEN 'ranged_weapon' THEN rw.weight
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.weight
+        WHEN ci.item_type = 'weapon' THEN w.weight
+        WHEN ci.item_type = 'armor' THEN a.weight
+        WHEN ci.item_type = 'ammunition' THEN am.weight
+        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'shield' THEN s.weight
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight,
-    CASE ci.item_type
-        WHEN 'weapon' THEN w.enhancement_bonus
+    es.name as slot_name,
+    CASE 
+        WHEN ci.item_type = 'container' THEN c.capacity_weight
         ELSE NULL
-    END as enhancement_bonus,
-    CASE ci.item_type
-        WHEN 'armor' THEN a.movement_rate
+    END as container_capacity,
+    CASE 
+        WHEN ci.item_type = 'container' THEN c.capacity_items
         ELSE NULL
-    END as movement_rate,
-    CASE ci.item_type
-        WHEN 'armor' THEN a.armor_class
-        ELSE NULL
-    END as armor_class,
-    CASE ci.item_type
-        WHEN 'shield' THEN s.defense_bonus
-        ELSE NULL
-    END as defense_bonus,
-    COALESCE(
-        CASE ci.item_type
-            WHEN 'weapon' THEN CAST(w.damage AS TEXT)
-            WHEN 'ranged_weapon' THEN CAST(rw.damage AS TEXT)
-            ELSE NULL
-        END,
-        NULL
-    ) as damage,
-    COALESCE(
-        CASE ci.item_type
-            WHEN 'weapon' THEN CAST(w.attacks_per_round AS TEXT)
-            WHEN 'ranged_weapon' THEN CAST(rw.rate_of_fire AS TEXT)
-            ELSE NULL
-        END,
-        NULL
-    ) as attacks_per_round
-FROM
+    END as container_max_items
+FROM 
     character_inventory ci
     LEFT JOIN equipment_slots es ON ci.equipment_slot_id = es.id
-    LEFT JOIN equipment e ON ci.item_type = 'equipment'
-    AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon'
-    AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor'
-    AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition'
-    AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container'
-    AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield'
-    AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon'
-    AND ci.item_id = rw.id
-WHERE
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
     ci.character_id = ?
-ORDER BY
-    ci.container_inventory_id NULLS FIRST,
-    ci.equipment_slot_id NULLS LAST,
+ORDER BY 
+    ci.equipment_slot_id IS NULL, 
+    es.name,
+    ci.container_id IS NOT NULL,
     item_name;
+
+-- name: GetContainerContents :many
+SELECT 
+    ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
+    ci.container_id, ci.equipment_slot_id, ci.notes,
+    ci.created_at, ci.updated_at,
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.name
+        WHEN ci.item_type = 'weapon' THEN w.name
+        WHEN ci.item_type = 'armor' THEN a.name
+        WHEN ci.item_type = 'ammunition' THEN am.name
+        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'shield' THEN s.name
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.name
+    END as item_name,
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.weight
+        WHEN ci.item_type = 'weapon' THEN w.weight
+        WHEN ci.item_type = 'armor' THEN a.weight
+        WHEN ci.item_type = 'ammunition' THEN am.weight
+        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'shield' THEN s.weight
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
+        ELSE 0
+    END as item_weight
+FROM 
+    character_inventory ci
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
+    ci.container_id = ?
+    AND ci.character_id = ?
+ORDER BY 
+    item_name;
+
+-- name: GetContainerCapacity :one
+SELECT 
+    c.capacity_weight,
+    c.capacity_items
+FROM 
+    character_inventory ci
+JOIN 
+    containers c ON ci.item_id = c.base_item_id
+WHERE 
+    ci.id = ?
+    AND ci.item_type = 'container';
 
 -- name: AddItemToInventory :one
 INSERT INTO
     character_inventory (
         character_id,
-        item_type,
         item_id,
+        item_type,
         quantity,
-        container_inventory_id,
+        container_id,
         equipment_slot_id,
         notes
     )
 VALUES
     (?, ?, ?, ?, ?, ?, ?) RETURNING id,
     character_id,
-    item_type,
     item_id,
+    item_type,
     quantity,
-    container_inventory_id,
+    container_id,
     equipment_slot_id,
     notes,
     created_at,
     updated_at;
 
--- name: GetItemFromInventory :one
-SELECT
-    *
-FROM
-    character_inventory
-WHERE
-    id = ?
-    AND character_id = ?
-LIMIT
-    1;
-
 -- name: UpdateInventoryItem :one
 UPDATE character_inventory
 SET
     quantity = ?,
-    container_inventory_id = ?,
+    container_id = ?,
     equipment_slot_id = ?,
     notes = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE
     id = ?
-    AND character_id = ? RETURNING *;
+    AND character_id = ? RETURNING id, character_id, item_id, item_type, quantity, container_id, equipment_slot_id, notes, created_at, updated_at;
 
 -- name: RemoveItemFromInventory :exec
 DELETE FROM character_inventory
@@ -129,90 +141,166 @@ WHERE
     id = ?
     AND character_id = ?;
 
--- name: GetContainerContents :many
-SELECT
-    ci.*,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.name
-        WHEN 'weapon' THEN w.name
-        WHEN 'armor' THEN a.name
-        WHEN 'ammunition' THEN am.name
-        WHEN 'container' THEN c.name
-        WHEN 'shield' THEN s.name
-        WHEN 'ranged_weapon' THEN rw.name
-    END as item_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.weight
-        WHEN 'weapon' THEN w.weight
-        WHEN 'armor' THEN a.weight
-        WHEN 'ammunition' THEN am.weight
-        WHEN 'container' THEN c.weight
-        WHEN 'shield' THEN s.weight
-        WHEN 'ranged_weapon' THEN rw.weight
-        ELSE 0
-    END as item_weight
-FROM
+-- name: IsSlotOccupied :one
+SELECT 
+    COUNT(*) > 0 as is_occupied
+FROM 
+    character_inventory
+WHERE 
+    character_id = ? 
+    AND equipment_slot_id = ?;
+
+-- name: MoveItemToContainer :exec
+UPDATE character_inventory
+SET 
+    container_id = ?,
+    equipment_slot_id = NULL
+WHERE 
+    id = ?
+    AND character_id = ?;
+
+-- name: EquipItem :exec
+UPDATE character_inventory
+SET 
+    equipment_slot_id = ?,
+    container_id = NULL
+WHERE 
+    id = ?
+    AND character_id = ?;
+
+-- name: UnequipItem :exec
+UPDATE character_inventory
+SET 
+    equipment_slot_id = NULL
+WHERE 
+    id = ?
+    AND character_id = ?;
+
+-- name: GetContainerWeight :one
+SELECT 
+    COALESCE(SUM(
+        CASE 
+            WHEN ci.item_type = 'equipment' THEN e.weight * ci.quantity
+            WHEN ci.item_type = 'weapon' THEN w.weight * ci.quantity
+            WHEN ci.item_type = 'armor' THEN a.weight * ci.quantity
+            WHEN ci.item_type = 'ammunition' THEN COALESCE(am.weight, 0) * ci.quantity
+            WHEN ci.item_type = 'container' THEN COALESCE(c.weight, 0) * ci.quantity
+            WHEN ci.item_type = 'shield' THEN s.weight * ci.quantity
+            WHEN ci.item_type = 'ranged_weapon' THEN rw.weight * ci.quantity
+            ELSE 0
+        END
+    ), 0) as total_weight
+FROM 
     character_inventory ci
-    LEFT JOIN equipment e ON ci.item_type = 'equipment'
-    AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon'
-    AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor'
-    AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition'
-    AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container'
-    AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield'
-    AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon'
-    AND ci.item_id = rw.id
-WHERE
-    ci.container_inventory_id = ?
-    AND ci.character_id = ?
-ORDER BY
-    item_name;
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
+    ci.container_id = ?;
+
+-- name: UpdateItemQuantity :exec
+UPDATE character_inventory
+SET 
+    quantity = ?
+WHERE 
+    id = ?
+    AND character_id = ?;
+
+-- name: FindStackableItemInInventory :one
+SELECT 
+    id, quantity
+FROM 
+    character_inventory
+WHERE 
+    character_id = ?
+    AND item_id = ?
+    AND item_type = ?
+    AND container_id IS NULL
+    AND equipment_slot_id IS NULL
+LIMIT 1;
+
+-- name: FindStackableItemInContainer :one
+SELECT 
+    id, quantity
+FROM 
+    character_inventory
+WHERE 
+    character_id = ?
+    AND item_id = ?
+    AND item_type = ?
+    AND container_id = ?
+LIMIT 1;
+
+-- name: SplitStack :exec
+INSERT INTO character_inventory (
+    character_id, 
+    item_id,
+    item_type,
+    quantity,
+    container_id,
+    equipment_slot_id,
+    notes,
+    created_at,
+    updated_at
+)
+SELECT 
+    ci.character_id,
+    ci.item_id,
+    ci.item_type,
+    ?,
+    ci.container_id,
+    NULL,
+    ci.notes,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM 
+    character_inventory ci
+WHERE 
+    ci.id = ?;
+    
+-- name: ReduceStackQuantity :exec
+UPDATE character_inventory
+SET quantity = quantity - ?
+WHERE id = ? AND character_id = ?;
 
 -- name: GetEquippedItems :many
 SELECT
-    ci.*,
+    ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
+    ci.container_id, ci.equipment_slot_id, ci.notes, ci.created_at, ci.updated_at,
     es.name as slot_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.name
-        WHEN 'weapon' THEN w.name
-        WHEN 'armor' THEN a.name
-        WHEN 'ammunition' THEN am.name
-        WHEN 'container' THEN c.name
-        WHEN 'shield' THEN s.name
-        WHEN 'ranged_weapon' THEN rw.name
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.name
+        WHEN ci.item_type = 'weapon' THEN w.name
+        WHEN ci.item_type = 'armor' THEN a.name
+        WHEN ci.item_type = 'ammunition' THEN am.name
+        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'shield' THEN s.name
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
-    CASE ci.item_type
-        WHEN 'equipment' THEN e.weight
-        WHEN 'weapon' THEN w.weight
-        WHEN 'armor' THEN a.weight
-        WHEN 'ammunition' THEN am.weight
-        WHEN 'container' THEN c.weight
-        WHEN 'shield' THEN s.weight
-        WHEN 'ranged_weapon' THEN rw.weight
+    CASE 
+        WHEN ci.item_type = 'equipment' THEN e.weight
+        WHEN ci.item_type = 'weapon' THEN w.weight
+        WHEN ci.item_type = 'armor' THEN a.weight
+        WHEN ci.item_type = 'ammunition' THEN am.weight
+        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'shield' THEN s.weight
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight
 FROM
     character_inventory ci
     JOIN equipment_slots es ON ci.equipment_slot_id = es.id
-    LEFT JOIN equipment e ON ci.item_type = 'equipment'
-    AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon'
-    AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor'
-    AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition'
-    AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container'
-    AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield'
-    AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon'
-    AND ci.item_id = rw.id
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
 WHERE
     ci.character_id = ?
     AND ci.equipment_slot_id IS NOT NULL

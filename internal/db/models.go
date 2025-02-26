@@ -10,26 +10,28 @@ import (
 )
 
 type Ammunition struct {
-	ID        int64         `json:"id"`
-	Name      string        `json:"name"`
-	CostGp    float64       `json:"cost_gp"`
-	Weight    sql.NullInt64 `json:"weight"`
-	Quantity  sql.NullInt64 `json:"quantity"`
-	CreatedAt sql.NullTime  `json:"created_at"`
-	UpdatedAt sql.NullTime  `json:"updated_at"`
+	ID               int64         `json:"id"`
+	Name             string        `json:"name"`
+	CostGp           float64       `json:"cost_gp"`
+	Weight           sql.NullInt64 `json:"weight"`
+	Quantity         sql.NullInt64 `json:"quantity"`
+	EnhancementBonus sql.NullInt64 `json:"enhancement_bonus"`
+	CreatedAt        sql.NullTime  `json:"created_at"`
+	UpdatedAt        sql.NullTime  `json:"updated_at"`
 }
 
 type Armor struct {
-	ID              int64        `json:"id"`
-	Name            string       `json:"name"`
-	ArmorClass      int64        `json:"armor_class"`
-	CostGp          int64        `json:"cost_gp"`
-	DamageReduction int64        `json:"damage_reduction"`
-	Weight          int64        `json:"weight"`
-	ArmorType       string       `json:"armor_type"`
-	MovementRate    int64        `json:"movement_rate"`
-	CreatedAt       sql.NullTime `json:"created_at"`
-	UpdatedAt       sql.NullTime `json:"updated_at"`
+	ID               int64         `json:"id"`
+	Name             string        `json:"name"`
+	ArmorClass       int64         `json:"armor_class"`
+	CostGp           int64         `json:"cost_gp"`
+	DamageReduction  int64         `json:"damage_reduction"`
+	Weight           int64         `json:"weight"`
+	ArmorType        string        `json:"armor_type"`
+	MovementRate     int64         `json:"movement_rate"`
+	EnhancementBonus sql.NullInt64 `json:"enhancement_bonus"`
+	CreatedAt        sql.NullTime  `json:"created_at"`
+	UpdatedAt        sql.NullTime  `json:"updated_at"`
 }
 
 type Character struct {
@@ -46,44 +48,33 @@ type Character struct {
 	Intelligence     int64     `json:"intelligence"`
 	Wisdom           int64     `json:"wisdom"`
 	Charisma         int64     `json:"charisma"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
 	ExperiencePoints int64     `json:"experience_points"`
 	PlatinumPieces   int64     `json:"platinum_pieces"`
 	GoldPieces       int64     `json:"gold_pieces"`
 	ElectrumPieces   int64     `json:"electrum_pieces"`
 	SilverPieces     int64     `json:"silver_pieces"`
 	CopperPieces     int64     `json:"copper_pieces"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type CharacterInventory struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
-}
-
-type CharacterInventoryWithMagic struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	MagicalWeaponID      sql.NullInt64  `json:"magical_weapon_id"`
-	ItemName             interface{}    `json:"item_name"`
-	ItemWeight           int64          `json:"item_weight"`
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Position        sql.NullString `json:"position"`
+	CustomName      sql.NullString `json:"custom_name"`
+	CustomNotes     sql.NullString `json:"custom_notes"`
+	IsIdentified    bool           `json:"is_identified"`
+	Charges         sql.NullInt64  `json:"charges"`
+	Condition       string         `json:"condition"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 type CharacterWeaponMastery struct {
@@ -103,27 +94,18 @@ type Coin struct {
 }
 
 type Container struct {
-	ID             int64          `json:"id"`
-	Name           string         `json:"name"`
-	CostGp         float64        `json:"cost_gp"`
-	Weight         sql.NullInt64  `json:"weight"`
-	CapacityWeight int64          `json:"capacity_weight"`
-	CapacityItems  sql.NullInt64  `json:"capacity_items"`
-	Description    sql.NullString `json:"description"`
-	CreatedAt      sql.NullTime   `json:"created_at"`
-	UpdatedAt      sql.NullTime   `json:"updated_at"`
+	ID             int64         `json:"id"`
+	BaseItemID     int64         `json:"base_item_id"`
+	CapacityWeight float64       `json:"capacity_weight"`
+	CapacityItems  sql.NullInt64 `json:"capacity_items"`
+	ContainerType  string        `json:"container_type"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
-type ContainerAllowedType struct {
-	ContainerID int64          `json:"container_id"`
-	ItemType    string         `json:"item_type"`
-	AmmoType    sql.NullString `json:"ammo_type"`
-}
-
-type CurrencyConversionRate struct {
-	FromCurrency string `json:"from_currency"`
-	ToCurrency   string `json:"to_currency"`
-	Rate         int64  `json:"rate"`
+type ContainerAllowedTag struct {
+	ContainerID int64  `json:"container_id"`
+	Tag         string `json:"tag"`
 }
 
 type Equipment struct {
@@ -142,29 +124,37 @@ type EquipmentSlot struct {
 	Description sql.NullString `json:"description"`
 }
 
-type MagicalWeapon struct {
-	ID               int64        `json:"id"`
-	BaseWeaponID     int64        `json:"base_weapon_id"`
-	EnhancementBonus int64        `json:"enhancement_bonus"`
-	CostGp           int64        `json:"cost_gp"`
-	XpValue          int64        `json:"xp_value"`
-	CreatedAt        sql.NullTime `json:"created_at"`
-	UpdatedAt        sql.NullTime `json:"updated_at"`
+type Item struct {
+	ID          int64          `json:"id"`
+	Name        string         `json:"name"`
+	Description sql.NullString `json:"description"`
+	Weight      float64        `json:"weight"`
+	Value       float64        `json:"value"`
+	Stackable   bool           `json:"stackable"`
+	MaxStack    sql.NullInt64  `json:"max_stack"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+}
+
+type ItemTag struct {
+	ItemID int64  `json:"item_id"`
+	Tag    string `json:"tag"`
 }
 
 type RangedWeapon struct {
-	ID          int64          `json:"id"`
-	Name        string         `json:"name"`
-	WeaponType  string         `json:"weapon_type"`
-	CostGp      sql.NullInt64  `json:"cost_gp"`
-	Weight      int64          `json:"weight"`
-	RateOfFire  string         `json:"rate_of_fire"`
-	RangeShort  sql.NullInt64  `json:"range_short"`
-	RangeMedium sql.NullInt64  `json:"range_medium"`
-	RangeLong   sql.NullInt64  `json:"range_long"`
-	Damage      sql.NullString `json:"damage"`
-	CreatedAt   sql.NullTime   `json:"created_at"`
-	UpdatedAt   sql.NullTime   `json:"updated_at"`
+	ID               int64          `json:"id"`
+	Name             string         `json:"name"`
+	WeaponType       string         `json:"weapon_type"`
+	CostGp           sql.NullInt64  `json:"cost_gp"`
+	Weight           int64          `json:"weight"`
+	RateOfFire       string         `json:"rate_of_fire"`
+	RangeShort       sql.NullInt64  `json:"range_short"`
+	RangeMedium      sql.NullInt64  `json:"range_medium"`
+	RangeLong        sql.NullInt64  `json:"range_long"`
+	Damage           sql.NullString `json:"damage"`
+	EnhancementBonus sql.NullInt64  `json:"enhancement_bonus"`
+	CreatedAt        sql.NullTime   `json:"created_at"`
+	UpdatedAt        sql.NullTime   `json:"updated_at"`
 }
 
 type RangedWeaponProperty struct {
@@ -185,32 +175,14 @@ type Session struct {
 }
 
 type Shield struct {
-	ID           int64        `json:"id"`
-	Name         string       `json:"name"`
-	CostGp       int64        `json:"cost_gp"`
-	Weight       int64        `json:"weight"`
-	DefenseBonus int64        `json:"defense_bonus"`
-	CreatedAt    sql.NullTime `json:"created_at"`
-	UpdatedAt    sql.NullTime `json:"updated_at"`
-}
-
-type Spell struct {
-	ID          int64        `json:"id"`
-	Name        string       `json:"name"`
-	Range       string       `json:"range"`
-	Duration    string       `json:"duration"`
-	Description string       `json:"description"`
-	CreatedAt   sql.NullTime `json:"created_at"`
-	UpdatedAt   sql.NullTime `json:"updated_at"`
-}
-
-type SpellClassLevel struct {
-	ID        int64        `json:"id"`
-	SpellID   int64        `json:"spell_id"`
-	Class     string       `json:"class"`
-	Level     int64        `json:"level"`
-	CreatedAt sql.NullTime `json:"created_at"`
-	UpdatedAt sql.NullTime `json:"updated_at"`
+	ID               int64         `json:"id"`
+	Name             string        `json:"name"`
+	CostGp           int64         `json:"cost_gp"`
+	Weight           int64         `json:"weight"`
+	DefenseBonus     int64         `json:"defense_bonus"`
+	EnhancementBonus sql.NullInt64 `json:"enhancement_bonus"`
+	CreatedAt        sql.NullTime  `json:"created_at"`
+	UpdatedAt        sql.NullTime  `json:"updated_at"`
 }
 
 type User struct {
@@ -224,18 +196,20 @@ type User struct {
 }
 
 type Weapon struct {
-	ID              int64          `json:"id"`
-	Name            string         `json:"name"`
-	Reach           int64          `json:"reach"`
-	CostGp          int64          `json:"cost_gp"`
-	Weight          int64          `json:"weight"`
-	RangeShort      sql.NullInt64  `json:"range_short"`
-	RangeMedium     sql.NullInt64  `json:"range_medium"`
-	RangeLong       sql.NullInt64  `json:"range_long"`
-	AttacksPerRound sql.NullString `json:"attacks_per_round"`
-	Damage          string         `json:"damage"`
-	CreatedAt       sql.NullTime   `json:"created_at"`
-	UpdatedAt       sql.NullTime   `json:"updated_at"`
+	ID                int64          `json:"id"`
+	Name              string         `json:"name"`
+	Reach             int64          `json:"reach"`
+	CostGp            int64          `json:"cost_gp"`
+	Weight            int64          `json:"weight"`
+	RangeShort        sql.NullInt64  `json:"range_short"`
+	RangeMedium       sql.NullInt64  `json:"range_medium"`
+	RangeLong         sql.NullInt64  `json:"range_long"`
+	AttacksPerRound   sql.NullString `json:"attacks_per_round"`
+	Damage            string         `json:"damage"`
+	EnhancementBonus  sql.NullInt64  `json:"enhancement_bonus"`
+	MagicalProperties sql.NullString `json:"magical_properties"`
+	CreatedAt         sql.NullTime   `json:"created_at"`
+	UpdatedAt         sql.NullTime   `json:"updated_at"`
 }
 
 type WeaponProperty struct {
