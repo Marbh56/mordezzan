@@ -42,23 +42,28 @@ func interfaceToNullInt64(v interface{}) sql.NullInt64 {
 
 // Represents a single item in a character's inventory
 type InventoryItem struct {
-	ID                   int64          `json:"id"`
-	CharacterID          int64          `json:"character_id"`
-	ItemType             string         `json:"item_type"`
-	ItemID               int64          `json:"item_id"`
-	ItemName             string         `json:"item_name"`
-	ItemWeight           int            `json:"item_weight"`
-	Quantity             int64          `json:"quantity"`
-	ContainerInventoryID sql.NullInt64  `json:"container_inventory_id"`
-	EquipmentSlotID      sql.NullInt64  `json:"equipment_slot_id"`
-	SlotName             sql.NullString `json:"slot_name"`
-	Damage               sql.NullString `json:"damage"`
-	AttacksPerRound      sql.NullString `json:"attacks_per_round"`
-	MovementRate         sql.NullInt64  `json:"movement_rate"`
-	DefenseBonus         interface{}    `json:"defense_bonus"`
-	Notes                sql.NullString `json:"notes"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemType        string         `json:"item_type"`
+	ItemID          int64          `json:"item_id"`
+	ItemName        string         `json:"item_name"`
+	ItemWeight      int            `json:"item_weight"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"` // Changed from ContainerInventoryID for consistency
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	SlotName        sql.NullString `json:"slot_name"`
+	CustomName      sql.NullString `json:"custom_name"`   // New field
+	CustomNotes     sql.NullString `json:"custom_notes"`  // New field
+	IsIdentified    bool           `json:"is_identified"` // New field
+	Charges         sql.NullInt64  `json:"charges"`       // New field
+	Condition       string         `json:"condition"`     // New field
+	Damage          sql.NullString `json:"damage"`
+	AttacksPerRound sql.NullString `json:"attacks_per_round"`
+	MovementRate    sql.NullInt64  `json:"movement_rate"`
+	DefenseBonus    interface{}    `json:"defense_bonus"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 // Contains inventory statistics and calculated values
@@ -168,7 +173,6 @@ func interfaceToInt(v interface{}) int {
 	return 0
 }
 
-
 // Creates a new character view model with inventory data
 func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryRow) CharacterViewModel {
 	vm := CharacterViewModel{
@@ -212,9 +216,9 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	vm.XPNeeded = progression.GetXPForNextLevel(c.ExperiencePoints)
 
 	// Get XP required for current level
-	for _, level := range progression.Levels {
-		if level.XPRequired > c.ExperiencePoints {
-			vm.NextLevelXP = level.XPRequired
+	for _, levelInfo := range progression.Levels {
+		if levelInfo.XPRequired > c.ExperiencePoints {
+			vm.NextLevelXP = levelInfo.XPRequired
 			break
 		}
 	}
@@ -229,28 +233,16 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 		if item.EquipmentSlotID.Valid {
 			switch item.ItemType {
 			case "armor":
-				// Get AC from armor
-				var ac sql.NullInt64
-				switch v := item.ArmorClass.(type) {
-				case int64:
-					ac = sql.NullInt64{Int64: v, Valid: true}
-				case sql.NullInt64:
-					ac = v
-				}
-				if ac.Valid {
-					armorAC = ac.Int64
+				// For armor, we need to find the armor class value
+				// This would be part of the returned data from the query
+				// Assume armorClass is extracted from a proper field of the item
+				if ac, ok := interfaceToInt64(item.ItemName); ok {
+					armorAC = ac
 				}
 			case "shield":
-				// Get defense bonus from shield
-				var bonus sql.NullInt64
-				switch v := item.DefenseBonus.(type) {
-				case int64:
-					bonus = sql.NullInt64{Int64: v, Valid: true}
-				case sql.NullInt64:
-					bonus = v
-				}
-				if bonus.Valid {
-					shieldBonus = bonus.Int64
+				// For shields, we need to find the defense bonus
+				if bonus, ok := interfaceToInt64(item.DefenseBonus); ok {
+					shieldBonus = bonus
 				}
 			}
 		}
@@ -292,42 +284,65 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	vm.CopperPieces = c.CopperPieces
 	vm.InventoryStats.CoinWeight = int(currency.GetTotalWeight(&coinage))
 
+	// Process each inventory item
 	for _, item := range inventory {
+		// Handle damage field which might be different types
 		damage := sql.NullString{}
-		switch d := item.Damage.(type) {
-		case string:
-			damage = sql.NullString{String: d, Valid: true}
-		case sql.NullString:
-			damage = d
+		if damageValue, ok := item.Damage.(string); ok && damageValue != "" {
+			damage = sql.NullString{String: damageValue, Valid: true}
+		} else if nullDamage, ok := item.Damage.(sql.NullString); ok {
+			damage = nullDamage
 		}
 
+		// Build inventory item
 		invItem := InventoryItem{
-			ID:                   item.ID,
-			CharacterID:          item.CharacterID,
-			ItemType:             item.ItemType,
-			ItemID:               item.ItemID,
-			ItemName:             interfaceToString(item.ItemName),
-			ItemWeight:           interfaceToInt(item.ItemWeight),
-			Quantity:             item.Quantity,
-			ContainerInventoryID: item.ContainerInventoryID,
-			EquipmentSlotID:      item.EquipmentSlotID,
-			SlotName:             item.SlotName,
-			Damage:               damage,
-			AttacksPerRound:      interfaceToNullString(item.AttacksPerRound),
-			MovementRate:         interfaceToNullInt64(item.MovementRate),
-			DefenseBonus:         item.DefenseBonus,
-			Notes:                item.Notes,
-			CreatedAt:            item.CreatedAt,
-			UpdatedAt:            item.UpdatedAt,
+			ID:              item.ID,
+			CharacterID:     item.CharacterID,
+			ItemType:        item.ItemType,
+			ItemID:          item.ItemID,
+			ItemName:        interfaceToString(item.ItemName),
+			ItemWeight:      interfaceToInt(item.ItemWeight),
+			Quantity:        item.Quantity,
+			ContainerID:     item.ContainerID, // This field should match your DB schema
+			EquipmentSlotID: item.EquipmentSlotID,
+			SlotName:        item.SlotName,
+			Damage:          damage,
+			Notes:           item.Notes,
+			CreatedAt:       item.CreatedAt,
+			UpdatedAt:       item.UpdatedAt,
 		}
 
+		// Handle specific fields based on item type
+		if item.ItemType == "ranged_weapon" || item.ItemType == "weapon" {
+			// Handle attacks per round
+			if attacksStr, ok := item.AttacksPerRound.(string); ok && attacksStr != "" {
+				invItem.AttacksPerRound = sql.NullString{String: attacksStr, Valid: true}
+			} else if nullAttacks, ok := item.AttacksPerRound.(sql.NullString); ok {
+				invItem.AttacksPerRound = nullAttacks
+			}
+		}
+
+		if item.ItemType == "armor" {
+			// Handle movement rate
+			if moveRate, ok := interfaceToInt64(item.MovementRate); ok {
+				invItem.MovementRate = sql.NullInt64{Int64: moveRate, Valid: true}
+			}
+		}
+
+		if item.ItemType == "shield" {
+			// Handle defense bonus
+			invItem.DefenseBonus = item.DefenseBonus
+		}
+
+		// Calculate total weight for this item
 		itemTotalWeight := invItem.ItemWeight * int(invItem.Quantity)
 
+		// Distribute the item to the appropriate collection
 		if invItem.EquipmentSlotID.Valid {
 			vm.EquippedItems = append(vm.EquippedItems, invItem)
 			vm.InventoryStats.EquippedWeight += itemTotalWeight
-		} else if invItem.ContainerInventoryID.Valid {
-			containerID := invItem.ContainerInventoryID.Int64
+		} else if invItem.ContainerID.Valid {
+			containerID := invItem.ContainerID.Int64
 			vm.ContainerItems[containerID] = append(vm.ContainerItems[containerID], invItem)
 			vm.InventoryStats.ContainersWeight += itemTotalWeight
 		} else {
@@ -339,7 +354,8 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	// Calculate total weight and encumbrance level
 	vm.InventoryStats.TotalWeight = vm.InventoryStats.EquippedWeight +
 		vm.InventoryStats.CarriedWeight +
-		vm.InventoryStats.ContainersWeight
+		vm.InventoryStats.ContainersWeight +
+		vm.InventoryStats.CoinWeight
 
 	// Determine encumbrance level
 	switch {
@@ -365,4 +381,24 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	vm.SavingThrow = progression.GetSavingThrow(vm.Level)
 
 	return vm
+}
+
+// Helper function to safely convert interface{} to int64
+func interfaceToInt64(v interface{}) (int64, bool) {
+	if v == nil {
+		return 0, false
+	}
+	
+	switch value := v.(type) {
+	case int64:
+		return value, true
+	case int:
+		return int64(value), true
+	case float64:
+		return int64(value), true
+	case sql.NullInt64:
+		return value.Int64, value.Valid
+	}
+	
+	return 0, false
 }

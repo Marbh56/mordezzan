@@ -588,28 +588,16 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var weaponMasteries []db.GetCharacterWeaponMasteriesRow
-	if character.Class == "Fighter" {
-		weaponMasteries, err = queries.GetCharacterWeaponMasteries(r.Context(), character.ID)
-		if err != nil {
-			logger.Error("Error fetching weapon masteries",
-				zap.Int64("character_id", character.ID),
-				zap.Error(err))
-		}
-	}
-
 	data := struct {
 		IsAuthenticated bool
 		Username        string
 		Character       CharacterViewModel
-		WeaponMasteries []db.GetCharacterWeaponMasteriesRow
 		FlashMessage    string
 		CurrentYear     int
 	}{
 		IsAuthenticated: true,
 		Username:        user.Username,
 		Character:       viewModel,
-		WeaponMasteries: weaponMasteries,
 		FlashMessage:    r.URL.Query().Get("message"),
 		CurrentYear:     time.Now().Year(),
 	}

@@ -198,6 +198,24 @@ SELECT
         WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight,
+    CASE 
+        WHEN ci.item_type = 'shield' THEN s.defense_bonus
+        ELSE NULL
+    END as defense_bonus,
+    CASE 
+        WHEN ci.item_type = 'weapon' THEN w.damage
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.damage
+        ELSE NULL
+    END as damage,
+    CASE 
+        WHEN ci.item_type = 'weapon' THEN w.attacks_per_round
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.rate_of_fire
+        ELSE NULL
+    END as attacks_per_round,
+    CASE 
+        WHEN ci.item_type = 'armor' THEN a.movement_rate
+        ELSE NULL
+    END as movement_rate,
     es.name as slot_name,
     CASE 
         WHEN ci.item_type = 'container' THEN c.capacity_weight
@@ -239,6 +257,10 @@ type GetCharacterInventoryRow struct {
 	UpdatedAt         time.Time      `json:"updated_at"`
 	ItemName          interface{}    `json:"item_name"`
 	ItemWeight        int64          `json:"item_weight"`
+	DefenseBonus      interface{}    `json:"defense_bonus"`
+	Damage            interface{}    `json:"damage"`
+	AttacksPerRound   interface{}    `json:"attacks_per_round"`
+	MovementRate      interface{}    `json:"movement_rate"`
 	SlotName          sql.NullString `json:"slot_name"`
 	ContainerCapacity interface{}    `json:"container_capacity"`
 	ContainerMaxItems interface{}    `json:"container_max_items"`
@@ -266,6 +288,10 @@ func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) 
 			&i.UpdatedAt,
 			&i.ItemName,
 			&i.ItemWeight,
+			&i.DefenseBonus,
+			&i.Damage,
+			&i.AttacksPerRound,
+			&i.MovementRate,
 			&i.SlotName,
 			&i.ContainerCapacity,
 			&i.ContainerMaxItems,

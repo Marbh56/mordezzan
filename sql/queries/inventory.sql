@@ -22,6 +22,24 @@ SELECT
         WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
     END as item_weight,
+    CASE 
+        WHEN ci.item_type = 'shield' THEN s.defense_bonus
+        ELSE NULL
+    END as defense_bonus,
+    CASE 
+        WHEN ci.item_type = 'weapon' THEN w.damage
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.damage
+        ELSE NULL
+    END as damage,
+    CASE 
+        WHEN ci.item_type = 'weapon' THEN w.attacks_per_round
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.rate_of_fire
+        ELSE NULL
+    END as attacks_per_round,
+    CASE 
+        WHEN ci.item_type = 'armor' THEN a.movement_rate
+        ELSE NULL
+    END as movement_rate,
     es.name as slot_name,
     CASE 
         WHEN ci.item_type = 'container' THEN c.capacity_weight

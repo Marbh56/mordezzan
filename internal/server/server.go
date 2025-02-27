@@ -44,13 +44,6 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/rest", s.AuthMiddleware(http.HandlerFunc(s.HandleRest)))
 	mux.Handle("/characters/currency/update", s.AuthMiddleware(http.HandlerFunc(s.HandleCurrencyUpdate)))
 
-	// Inventory management routes (protected)
-	mux.Handle("/characters/inventory/add", s.AuthMiddleware(http.HandlerFunc(s.HandleAddInventoryItem)))
-	mux.Handle("/characters/inventory/remove", s.AuthMiddleware(http.HandlerFunc(s.HandleRemoveInventoryItem)))
-
-	// Combat specialty routes (protected)
-	mux.Handle("/characters/masteries", s.AuthMiddleware(http.HandlerFunc(s.HandleWeaponMastery)))
-
 	// User settings routes (protected)
 	mux.Handle("/settings", s.AuthMiddleware(http.HandlerFunc(s.HandleSettings)))
 	mux.Handle("/settings/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateUser)))
