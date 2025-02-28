@@ -324,3 +324,60 @@ WHERE
     AND ci.equipment_slot_id IS NOT NULL
 ORDER BY
     es.name;
+
+
+-- name: GetAllWeapons :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    weapons
+ORDER BY 
+    name;
+
+-- name: GetAllArmor :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    armor
+ORDER BY 
+    name;
+
+-- name: GetAllShields :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    shields
+ORDER BY 
+    name;
+
+-- name: GetAllEquipment :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    equipment
+ORDER BY 
+    name;
+
+-- name: GetAllAmmunition :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    ammunition
+ORDER BY 
+    name;
+
+-- name: GetAllRangedWeapons :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    ranged_weapons
+ORDER BY 
+    name;
+
+-- name: GetEquipmentSlots :many
+SELECT 
+    id, name, description
+FROM 
+    equipment_slots
+ORDER BY 
+    name;
