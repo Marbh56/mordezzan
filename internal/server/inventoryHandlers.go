@@ -490,7 +490,132 @@ func (s *Server) HandleUnequipItem(w http.ResponseWriter, r *http.Request) {
 
 // HandleMoveToContainer handles moving items to containers
 func (s *Server) HandleMoveToContainer(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement move to container functionality
+	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for move to container",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form", zap.Error(err))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Get character ID, item ID, and container ID from form
+	characterID, err := strconv.ParseInt(r.FormValue("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("character_id")))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	itemID, err := strconv.ParseInt(r.FormValue("item_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid item ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("item_id")))
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	containerIDStr := r.FormValue("container_id")
+	var containerID sql.NullInt64
+	if containerIDStr != "" {
+		id, err := strconv.ParseInt(containerIDStr, 10, 64)
+		if err != nil {
+			logger.Error("Invalid container ID",
+				zap.Error(err),
+				zap.String("raw_id", containerIDStr))
+			http.Error(w, "Invalid container ID", http.StatusBadRequest)
+			return
+		}
+		containerID = sql.NullInt64{Int64: id, Valid: true}
+	}
+
+	// Verify character belongs to user
+	queries := db.New(s.db)
+	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Character not found or belongs to another user",
+			zap.Error(err),
+			zap.Int64("character_id", characterID))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// If a container was specified, verify it belongs to the character
+	if containerID.Valid {
+		// Check if the container exists and belongs to the character
+		inventory, err := queries.GetCharacterInventory(r.Context(), characterID)
+		if err != nil {
+			logger.Error("Failed to fetch character inventory",
+				zap.Error(err),
+				zap.Int64("character_id", characterID))
+			http.Error(w, "Error retrieving inventory", http.StatusInternalServerError)
+			return
+		}
+
+		containerFound := false
+		for _, item := range inventory {
+			if item.ID == containerID.Int64 && item.ItemType == "container" {
+				containerFound = true
+				break
+			}
+		}
+
+		if !containerFound {
+			logger.Warn("Container not found or doesn't belong to character",
+				zap.Int64("character_id", characterID),
+				zap.Int64("container_id", containerID.Int64))
+			http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Container not found", characterID), http.StatusSeeOther)
+			return
+		}
+
+		// Check if the container has capacity for the item
+		// This would require additional logic to check weight and item counts
+		// For now, we'll skip detailed capacity checking
+	}
+
+	// Move the item to the container
+	err = queries.MoveItemToContainer(r.Context(), db.MoveItemToContainerParams{
+		ContainerID: containerID,
+		ID:          itemID,
+		CharacterID: characterID,
+	})
+	if err != nil {
+		logger.Error("Failed to move item to container",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("item_id", itemID),
+			zap.Any("container_id", containerID))
+		http.Error(w, "Error moving item", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("Item moved to container successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("item_id", itemID),
+		zap.Any("container_id", containerID))
+
+	// Redirect back to character detail page with success message
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item moved successfully", characterID), http.StatusSeeOther)
 }
 
 func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, character db.Character, queries *db.Queries) {
