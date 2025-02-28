@@ -402,7 +402,90 @@ func (s *Server) HandleEquipItem(w http.ResponseWriter, r *http.Request) {
 
 // HandleUnequipItem handles unequipping items from equipment slots to inventory
 func (s *Server) HandleUnequipItem(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement unequip item functionality
+	// Only accept POST requests
+	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for unequip item",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse form data
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Get item ID and character ID from form
+	itemID, err := strconv.ParseInt(r.FormValue("item_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid item ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("item_id")))
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.FormValue("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("character_id")))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify character belongs to user
+	queries := db.New(s.db)
+	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Character not found or belongs to another user",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Unequip the item
+	err = queries.UnequipItem(r.Context(), db.UnequipItemParams{
+		ID:          itemID,
+		CharacterID: characterID,
+	})
+	if err != nil {
+		logger.Error("Failed to unequip item",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("item_id", itemID),
+			zap.Int64("user_id", user.UserID))
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error unequipping item", characterID), http.StatusSeeOther)
+		return
+	}
+
+	logger.Info("Item unequipped successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("item_id", itemID),
+		zap.Int64("user_id", user.UserID))
+
+	// Redirect back to character detail page
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item unequipped successfully", characterID), http.StatusSeeOther)
 }
 
 // HandleMoveToContainer handles moving items to containers
