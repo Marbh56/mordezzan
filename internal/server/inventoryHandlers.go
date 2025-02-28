@@ -285,7 +285,119 @@ func (s *Server) HandleUpdateInventoryItem(w http.ResponseWriter, r *http.Reques
 
 // HandleEquipItem handles equipping items from inventory to equipment slots
 func (s *Server) HandleEquipItem(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement equip item functionality
+	if r.Method != http.MethodPost {
+		logger.Error("Invalid method for equip item",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err),
+			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Get required form values
+	characterID, err := strconv.ParseInt(r.FormValue("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("character_id")))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	itemID, err := strconv.ParseInt(r.FormValue("item_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid item ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("item_id")))
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	equipmentSlotID, err := strconv.ParseInt(r.FormValue("equipment_slot_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid equipment slot ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("equipment_slot_id")))
+		http.Error(w, "Invalid equipment slot ID", http.StatusBadRequest)
+		return
+	}
+
+	// Validate character belongs to the user
+	queries := db.New(s.db)
+	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Character not found or doesn't belong to user",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if the equipment slot is already occupied
+	slotOccupied, err := queries.IsSlotOccupied(r.Context(), db.IsSlotOccupiedParams{
+		CharacterID:     characterID,
+		EquipmentSlotID: sql.NullInt64{Int64: equipmentSlotID, Valid: true},
+	})
+	if err != nil {
+		logger.Error("Error checking if slot is occupied",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("equipment_slot_id", equipmentSlotID))
+		http.Error(w, "Error checking equipment slot", http.StatusInternalServerError)
+		return
+	}
+
+	if slotOccupied {
+		logger.Warn("Attempted to equip item to an occupied slot",
+			zap.Int64("character_id", characterID),
+			zap.Int64("equipment_slot_id", equipmentSlotID))
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Equipment slot is already occupied", characterID), http.StatusSeeOther)
+		return
+	}
+
+	// Equip the item
+	err = queries.EquipItem(r.Context(), db.EquipItemParams{
+		EquipmentSlotID: sql.NullInt64{Int64: equipmentSlotID, Valid: true},
+		ID:              itemID,
+		CharacterID:     characterID,
+	})
+	if err != nil {
+		logger.Error("Failed to equip item",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("item_id", itemID),
+			zap.Int64("equipment_slot_id", equipmentSlotID))
+		http.Error(w, "Error equipping item", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("Item equipped successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("item_id", itemID),
+		zap.Int64("equipment_slot_id", equipmentSlotID))
+
+	// Redirect back to character detail page
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item equipped successfully", characterID), http.StatusSeeOther)
 }
 
 // HandleUnequipItem handles unequipping items from equipment slots to inventory
