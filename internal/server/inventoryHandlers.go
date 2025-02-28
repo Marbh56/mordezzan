@@ -129,7 +129,158 @@ func (s *Server) HandleRemoveInventoryItem(w http.ResponseWriter, r *http.Reques
 
 // HandleUpdateInventoryItem handles updating items in a character's inventory
 func (s *Server) HandleUpdateInventoryItem(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement inventory update functionality
+	if r.Method != http.MethodPost {
+		logger.Warn("Invalid method for inventory update",
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form",
+			zap.Error(err))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Extract form values
+	itemID, err := strconv.ParseInt(r.FormValue("item_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid item ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("item_id")))
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.FormValue("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.Error(err),
+			zap.String("raw_id", r.FormValue("character_id")))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify the character belongs to the user
+	queries := db.New(s.db)
+	_, err = queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Character not found or belongs to another user",
+			zap.Error(err),
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse quantity
+	quantity, err := strconv.ParseInt(r.FormValue("quantity"), 10, 64)
+	if err != nil || quantity < 1 {
+		quantity = 1 // Default to 1 if invalid
+	}
+
+	// Parse container ID if provided
+	var containerID sql.NullInt64
+	if containerIDStr := r.FormValue("container_id"); containerIDStr != "" {
+		id, err := strconv.ParseInt(containerIDStr, 10, 64)
+		if err == nil {
+			containerID = sql.NullInt64{Int64: id, Valid: true}
+
+			// Verify the container belongs to the character
+			if containerID.Valid {
+				// Here we need to check if the container belongs to the character
+				// and also ensure we're not creating a circular reference
+				if containerID.Int64 == itemID {
+					logger.Warn("Attempted to put a container inside itself",
+						zap.Int64("item_id", itemID),
+						zap.Int64("container_id", containerID.Int64))
+					http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Cannot put a container inside itself", characterID), http.StatusSeeOther)
+					return
+				}
+			}
+		}
+	}
+
+	// Parse equipment slot ID if provided
+	var equipmentSlotID sql.NullInt64
+	if slotIDStr := r.FormValue("equipment_slot_id"); slotIDStr != "" {
+		id, err := strconv.ParseInt(slotIDStr, 10, 64)
+		if err == nil {
+			// Check if the slot is already occupied
+			isOccupied, err := queries.IsSlotOccupied(r.Context(), db.IsSlotOccupiedParams{
+				CharacterID:     characterID,
+				EquipmentSlotID: sql.NullInt64{Int64: id, Valid: true},
+			})
+			if err != nil {
+				logger.Error("Failed to check if equipment slot is occupied",
+					zap.Error(err),
+					zap.Int64("character_id", characterID),
+					zap.Int64("slot_id", id))
+			} else if isOccupied {
+				logger.Warn("Attempted to equip item to an occupied slot",
+					zap.Int64("character_id", characterID),
+					zap.Int64("slot_id", id))
+				http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Equipment slot is already occupied", characterID), http.StatusSeeOther)
+				return
+			}
+
+			equipmentSlotID = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
+
+	// Parse notes if provided
+	var notes sql.NullString
+	if notesStr := r.FormValue("notes"); notesStr != "" {
+		notes = sql.NullString{String: notesStr, Valid: true}
+	}
+
+	// Handle mutual exclusivity - if placing in container, can't equip and vice versa
+	if containerID.Valid && equipmentSlotID.Valid {
+		logger.Warn("Item cannot be both equipped and in a container",
+			zap.Int64("item_id", itemID),
+			zap.Int64("character_id", characterID))
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item cannot be both equipped and in a container", characterID), http.StatusSeeOther)
+		return
+	}
+
+	// Update the inventory item
+	updateParams := db.UpdateInventoryItemParams{
+		Quantity:        quantity,
+		ContainerID:     containerID,
+		EquipmentSlotID: equipmentSlotID,
+		Notes:           notes,
+		ID:              itemID,
+		CharacterID:     characterID,
+	}
+
+	_, err = queries.UpdateInventoryItem(r.Context(), updateParams)
+	if err != nil {
+		logger.Error("Failed to update inventory item",
+			zap.Error(err),
+			zap.Int64("item_id", itemID),
+			zap.Int64("character_id", characterID))
+		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating item", characterID), http.StatusSeeOther)
+		return
+	}
+
+	logger.Info("Inventory item updated successfully",
+		zap.Int64("item_id", itemID),
+		zap.Int64("character_id", characterID))
+
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item updated successfully", characterID), http.StatusSeeOther)
 }
 
 // HandleEquipItem handles equipping items from inventory to equipment slots
