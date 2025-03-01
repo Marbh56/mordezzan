@@ -1,0 +1,44 @@
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+
+.htmx-request.htmx-indicator {
+    display: inline-block;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--color-FERed);
+    animation: spin 0.8s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.login-error {
+    color: var(--color-FERed);
+    background-color: rgba(217, 4, 41, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.login-success {
+    color: #43A047;
+    background-color: rgba(76, 175, 80, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}

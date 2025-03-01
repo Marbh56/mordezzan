@@ -16,6 +16,202 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleLoginForm(w, r)
+	case http.MethodPost:
+		s.handleLoginSubmission(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles(
+		"templates/layout/base.html",
+		"templates/auth/login.html",
+	)
+	if err != nil {
+		logger.Error("Failed to parse login template",
+			zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		IsAuthenticated bool
+		FlashMessage    string
+		CurrentYear     int
+	}{
+		IsAuthenticated: false,
+		FlashMessage:    r.URL.Query().Get("message"),
+		CurrentYear:     time.Now().Year(),
+	}
+
+	err = tmpl.ExecuteTemplate(w, "base.html", data)
+	if err != nil {
+		logger.Error("Failed to execute login template",
+			zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
+	// Check if this is an HTMX request
+	isHtmx := r.Header.Get("HX-Request") == "true"
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse login form",
+			zap.Error(err))
+		if isHtmx {
+			s.renderLoginResult(w, false, "Failed to process form")
+		} else {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		}
+		return
+	}
+
+	username := r.Form.Get("username")
+	password := r.Form.Get("password")
+
+	if username == "" || password == "" {
+		logger.Warn("Login attempt with missing credentials",
+			zap.String("username", username))
+		if isHtmx {
+			s.renderLoginResult(w, false, "Username and password are required")
+		} else {
+			http.Redirect(w, r, "/login?message=Username and password are required", http.StatusSeeOther)
+		}
+		return
+	}
+
+	queries := db.New(s.db)
+
+	// Get user from database
+	user, err := queries.GetUserByUsername(r.Context(), username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			logger.Warn("Login attempt with non-existent username",
+				zap.String("username", username))
+			if isHtmx {
+				s.renderLoginResult(w, false, "Invalid username or password")
+			} else {
+				http.Redirect(w, r, "/login?message=Invalid username or password", http.StatusSeeOther)
+			}
+			return
+		}
+		logger.Error("Database error during login",
+			zap.Error(err),
+			zap.String("username", username))
+		if isHtmx {
+			s.renderLoginResult(w, false, "Internal Server Error")
+		} else {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Verify password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		logger.Warn("Failed login attempt - invalid password",
+			zap.String("username", username))
+		if isHtmx {
+			s.renderLoginResult(w, false, "Invalid username or password")
+		} else {
+			http.Redirect(w, r, "/login?message=Invalid username or password", http.StatusSeeOther)
+		}
+		return
+	}
+
+	// Generate session token
+	token := make([]byte, 32)
+	_, err = rand.Read(token)
+	if err != nil {
+		logger.Error("Failed to generate session token",
+			zap.Error(err),
+			zap.String("username", username))
+		if isHtmx {
+			s.renderLoginResult(w, false, "Internal Server Error")
+		} else {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+	sessionToken := hex.EncodeToString(token)
+
+	// Create session
+	sessionParams := db.CreateSessionParams{
+		Token:     sessionToken,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+
+	_, err = queries.CreateSession(r.Context(), sessionParams)
+	if err != nil {
+		logger.Error("Failed to create session",
+			zap.Error(err),
+			zap.String("username", username),
+			zap.Int64("user_id", user.ID))
+		if isHtmx {
+			s.renderLoginResult(w, false, "Internal Server Error")
+		} else {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Set session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  sessionParams.ExpiresAt,
+	})
+
+	logger.Info("User logged in successfully",
+		zap.String("username", username),
+		zap.Int64("user_id", user.ID))
+
+	if isHtmx {
+		// Render a success message for HTMX requests
+		s.renderLoginResult(w, true, "Login successful!")
+	} else {
+		// Redirect for traditional requests
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+// Helper function to render the login result partial template
+func (s *Server) renderLoginResult(w http.ResponseWriter, success bool, message string) {
+	tmpl, err := template.ParseFiles("templates/auth/_login_result.html")
+	if err != nil {
+		logger.Error("Failed to parse login result template", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		Success bool
+		Message string
+	}{
+		Success: success,
+		Message: message,
+	}
+
+	err = tmpl.ExecuteTemplate(w, "login_result", data)
+	if err != nil {
+		logger.Error("Failed to execute login result template", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -169,140 +365,6 @@ func (s *Server) handleRegistrerSubmission(w http.ResponseWriter, r *http.Reques
 		zap.String("email", email))
 
 	http.Redirect(w, r, "/login?message=Registration successful! Please log in", http.StatusSeeOther)
-}
-
-func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		s.handleLoginForm(w, r)
-	case http.MethodPost:
-		s.handleLoginSubmission(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/auth/login.html",
-	)
-	if err != nil {
-		logger.Error("Failed to parse login template",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		IsAuthenticated bool
-		FlashMessage    string
-		CurrentYear     int
-	}{
-		IsAuthenticated: false,
-		FlashMessage:    r.URL.Query().Get("message"),
-		CurrentYear:     time.Now().Year(),
-	}
-
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		logger.Error("Failed to execute login template",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		logger.Error("Failed to parse login form",
-			zap.Error(err))
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	username := r.Form.Get("username")
-	password := r.Form.Get("password")
-
-	if username == "" || password == "" {
-		logger.Warn("Login attempt with missing credentials",
-			zap.String("username", username))
-		http.Redirect(w, r, "/login?message=Username and password are required", http.StatusSeeOther)
-		return
-	}
-
-	queries := db.New(s.db)
-
-	// Get user from database
-	user, err := queries.GetUserByUsername(r.Context(), username)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			logger.Warn("Login attempt with non-existent username",
-				zap.String("username", username))
-			http.Redirect(w, r, "/login?message=Invalid username or password", http.StatusSeeOther)
-			return
-		}
-		logger.Error("Database error during login",
-			zap.Error(err),
-			zap.String("username", username))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
-	if err != nil {
-		logger.Warn("Failed login attempt - invalid password",
-			zap.String("username", username))
-		http.Redirect(w, r, "/login?message=Invalid username or password", http.StatusSeeOther)
-		return
-	}
-
-	// Generate session token
-	token := make([]byte, 32)
-	_, err = rand.Read(token)
-	if err != nil {
-		logger.Error("Failed to generate session token",
-			zap.Error(err),
-			zap.String("username", username))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	sessionToken := hex.EncodeToString(token)
-
-	// Create session
-	sessionParams := db.CreateSessionParams{
-		Token:     sessionToken,
-		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-
-	_, err = queries.CreateSession(r.Context(), sessionParams)
-	if err != nil {
-		logger.Error("Failed to create session",
-			zap.Error(err),
-			zap.String("username", username),
-			zap.Int64("user_id", user.ID))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
-		Value:    sessionToken,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   r.TLS != nil,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  sessionParams.ExpiresAt,
-	})
-
-	logger.Info("User logged in successfully",
-		zap.String("username", username),
-		zap.Int64("user_id", user.ID))
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) HandleLogout(w http.ResponseWriter, r *http.Request) {

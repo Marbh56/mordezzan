@@ -1,0 +1,19 @@
+{{define "login_result"}}
+<div id="login-result">
+    {{if .Success}}
+    <div class="login-success">
+        Login successful! Redirecting to dashboard...
+    </div>
+    <script>
+        // Redirect after a short delay for a better UX
+        setTimeout(function () {
+            window.location.href = "/";
+        }, 500);
+    </script>
+    {{else}}
+    <div class="login-error">
+        {{.Message}}
+    </div>
+    {{end}}
+</div>
+{{end}}
