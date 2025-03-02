@@ -38,9 +38,11 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/delete", s.AuthMiddleware(http.HandlerFunc(s.HandleDeleteCharacter)))
 
 	// Character status routes (protected)
-	mux.Handle("/characters/xp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateXP)))
 	mux.Handle("/characters/hp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateHP)))
+	mux.Handle("/characters/hp/form", s.AuthMiddleware(http.HandlerFunc(s.HandleHPForm)))
+	mux.Handle("/characters/hp/cancel", s.AuthMiddleware(http.HandlerFunc(s.HandleHPCancel)))
 	mux.Handle("/characters/maxhp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateMaxHP)))
+	mux.Handle("/characters/maxhp/form", s.AuthMiddleware(http.HandlerFunc(s.HandleMaxHPForm)))
 	mux.Handle("/characters/rest", s.AuthMiddleware(http.HandlerFunc(s.HandleRest)))
 	mux.Handle("/characters/currency/update", s.AuthMiddleware(http.HandlerFunc(s.HandleCurrencyUpdate)))
 

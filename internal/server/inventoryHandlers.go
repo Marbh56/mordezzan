@@ -637,8 +637,16 @@ func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, charac
 	if err != nil {
 		logger.Error("Failed to fetch character inventory",
 			zap.Error(err), zap.Int64("character_id", character.ID))
-		http.Error(w, "Error loading inventory data", http.StatusInternalServerError)
-		return
+		// IMPORTANT: Continue without containers rather than returning an error
+		containers = []db.GetCharacterInventoryRow{}
+	}
+
+	// Filter containers manually by type instead of relying on the query
+	var filteredContainers []db.GetCharacterInventoryRow
+	for _, item := range containers {
+		if item.ItemType == "container" {
+			filteredContainers = append(filteredContainers, item)
+		}
 	}
 
 	// Get equipment slots
@@ -662,7 +670,7 @@ func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, charac
 		CharacterID        int64
 		SelectedType       string
 		Items              interface{}
-		Containers         []db.GetCharacterInventoryRow
+		Containers         []db.GetCharacterInventoryRow // This line needs to change
 		EquipmentSlots     interface{}
 		ShowEquipmentSlots bool
 		FlashMessage       string

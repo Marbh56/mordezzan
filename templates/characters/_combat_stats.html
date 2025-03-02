@@ -2,37 +2,7 @@
 <div class="combat-stats">
     <!-- Basic Stats -->
     <div class="stat-block">
-        <h2>Hit Points</h2>
-        <div class="stat-value">
-            {{.Character.CurrentHp}} / {{.Character.MaxHp}}
-        </div>
-
-        <!-- Current HP Form -->
-        <form action="/characters/hp/update" method="POST" class="hp-form">
-            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
-            <div class="form-group">
-                <label for="hp_change">Modify Current HP:</label>
-                <input type="number" id="hp_change" name="hp_change" required />
-                <p class="help-text">Use positive numbers to heal, negative to damage</p>
-            </div>
-            <button type="submit">Update Current HP</button>
-        </form>
-
-        <!-- Max HP Form -->
-        <form action="/characters/maxhp/update" method="POST" class="hp-form">
-            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
-            <div class="form-group">
-                <label for="max_hp_change">Modify Maximum HP:</label>
-                <input type="number" id="max_hp_change" name="max_hp_change" required />
-                <p class="help-text">Use positive numbers to increase, negative to decrease</p>
-            </div>
-            <button type="submit">Update Maximum HP</button>
-        </form>
-
-        <form action="/characters/rest" method="POST" class="rest-form">
-            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
-            <button type="submit">Rest (Roll Hit Dice)</button>
-        </form>
+        {{template "hp_display_section" .}}
     </div>
 
     <div class="stat-block">

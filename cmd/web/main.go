@@ -43,7 +43,7 @@ func main() {
 	addr := ip + ":8080"
 	logger.Info("Server starting", zap.String("address", addr))
 
-	if err := http.ListenAndServe("localhost:8080", handler); err != nil {
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		logger.Fatal("Failed to start server", zap.Error(err))
 	}
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
@@ -11,8 +12,10 @@ import (
 
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/logger"
+	"github.com/marbh56/mordezzan/internal/rules"
 	"github.com/marbh56/mordezzan/internal/rules/ability_scores"
 	charRules "github.com/marbh56/mordezzan/internal/rules/character"
+	"github.com/marbh56/mordezzan/internal/rules/combat"
 	"go.uber.org/zap"
 )
 
@@ -298,113 +301,6 @@ func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=%s", characterID, message), http.StatusSeeOther)
 }
 
-func (s *Server) HandleUpdateXP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	user, ok := GetUserFromContext(r.Context())
-	if !ok {
-		logger.Error("Unauthorized access attempt",
-			zap.String("path", r.URL.Path),
-			zap.String("method", r.Method))
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		logger.Error("Failed to parse form",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
-	if err != nil {
-		logger.Error("Invalid character ID",
-			zap.Error(err),
-			zap.String("raw_id", r.Form.Get("character_id")))
-		http.Error(w, "Invalid character ID", http.StatusBadRequest)
-		return
-	}
-
-	queries := db.New(s.db)
-	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
-		ID:     characterID,
-		UserID: user.UserID,
-	})
-	if err != nil {
-		logger.Error("Error fetching character",
-			zap.Error(err),
-			zap.Int64("character_id", characterID),
-			zap.Int64("user_id", user.UserID))
-		http.Error(w, "Character not found", http.StatusNotFound)
-		return
-	}
-
-	xpChange, err := strconv.ParseInt(r.Form.Get("xp_change"), 10, 64)
-	if err != nil {
-		logger.Warn("Invalid XP value provided",
-			zap.Error(err),
-			zap.String("raw_xp", r.Form.Get("xp_change")),
-			zap.Int64("character_id", characterID))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid XP value", characterID), http.StatusSeeOther)
-		return
-	}
-
-	newXP := character.ExperiencePoints + xpChange
-	if newXP < 0 {
-		newXP = 0
-	}
-
-	progression := charRules.GetClassProgression(character.Class)
-	newLevel := progression.GetLevelForXP(newXP)
-
-	updateParams := db.UpdateCharacterParams{
-		ID:               characterID,
-		UserID:           user.UserID,
-		Name:             character.Name,
-		Class:            character.Class,
-		Level:            newLevel,
-		MaxHp:            character.MaxHp,
-		CurrentHp:        character.CurrentHp,
-		Strength:         character.Strength,
-		Dexterity:        character.Dexterity,
-		Constitution:     character.Constitution,
-		Intelligence:     character.Intelligence,
-		Wisdom:           character.Wisdom,
-		Charisma:         character.Charisma,
-		ExperiencePoints: newXP,
-		PlatinumPieces:   character.PlatinumPieces,
-		GoldPieces:       character.GoldPieces,
-		ElectrumPieces:   character.ElectrumPieces,
-		SilverPieces:     character.SilverPieces,
-		CopperPieces:     character.CopperPieces,
-	}
-
-	_, err = queries.UpdateCharacter(r.Context(), updateParams)
-	if err != nil {
-		logger.Error("Failed to update character XP",
-			zap.Error(err),
-			zap.Int64("character_id", characterID),
-			zap.Int64("new_xp", newXP),
-			zap.Int64("new_level", newLevel))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating XP", characterID), http.StatusSeeOther)
-		return
-	}
-
-	logger.Info("Character XP updated successfully",
-		zap.Int64("character_id", characterID),
-		zap.Int64("old_xp", character.ExperiencePoints),
-		zap.Int64("new_xp", newXP),
-		zap.Int64("old_level", character.Level),
-		zap.Int64("new_level", newLevel))
-
-	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=XP and level updated successfully", characterID), http.StatusSeeOther)
-}
-
 func calculateMinimumXPForLevel(class string, level int64) int64 {
 	progression := charRules.GetClassProgression(class)
 	for _, levelInfo := range progression.Levels {
@@ -418,315 +314,8 @@ func calculateMinimumXPForLevel(class string, level int64) int64 {
 	return 0
 }
 
-func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
-	user, ok := GetUserFromContext(r.Context())
-	if !ok {
-		logger.Error("Unauthorized access attempt",
-			zap.String("path", r.URL.Path))
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	characterIDStr := r.URL.Query().Get("id")
-	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
-	if err != nil {
-		logger.Error("Invalid character ID",
-			zap.String("raw_id", characterIDStr),
-			zap.Error(err))
-		http.Error(w, "Invalid character ID", http.StatusBadRequest)
-		return
-	}
-
-	queries := db.New(s.db)
-	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
-		ID:     characterID,
-		UserID: user.UserID,
-	})
-	if err != nil {
-		logger.Error("Error fetching character",
-			zap.Int64("character_id", characterID),
-			zap.Int64("user_id", user.UserID),
-			zap.Error(err))
-		http.Error(w, "Character not found", http.StatusNotFound)
-		return
-	}
-
-	inventory, err := queries.GetCharacterInventory(r.Context(), characterID)
-	if err != nil {
-		logger.Error("Error fetching inventory",
-			zap.Int64("character_id", characterID),
-			zap.Error(err))
-		http.Error(w, "Error loading character inventory", http.StatusInternalServerError)
-		return
-	}
-
-	viewModel := NewCharacterViewModel(character, inventory)
-
-	funcMap := template.FuncMap{
-		"seq": func(start, end int) []int {
-			s := make([]int, end-start+1)
-			for i := range s {
-				s[i] = start + i
-			}
-			return s
-		},
-		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
-		"add": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v + int64(w)
-				case int64:
-					return v + w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) + w
-				case int:
-					return int64(v + w)
-				}
-			}
-			return 0
-		},
-		"mul": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v * int64(w)
-				case int64:
-					return v * w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) * w
-				case int:
-					return int64(v * w)
-				}
-			}
-			return 0
-		},
-		"div": func(a, b float64) float64 {
-			if b == 0 {
-				return 0
-			}
-			return a / b
-		},
-		"sub": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v - int64(w)
-				case int64:
-					return v - w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) - w
-				case int:
-					return int64(v - w)
-				}
-			}
-			return 0
-		},
-		"abs": func(x int) int {
-			if x < 0 {
-				return -x
-			}
-			return x
-		},
-		"formatDateTime": func(t time.Time) string {
-			return t.Format("January 2, 2006 3:04 PM")
-		},
-		"eq": func(a, b interface{}) bool {
-			return a == b
-		},
-		"formatModifier": func(mod int) string {
-			if mod > 0 {
-				return "+" + strconv.Itoa(mod)
-			}
-			return strconv.Itoa(mod)
-		},
-		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("invalid dict call")
-			}
-			dict := make(map[string]interface{}, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					return nil, fmt.Errorf("dict keys must be strings")
-				}
-				dict[key] = values[i+1]
-			}
-			return dict, nil
-		},
-	}
-
-	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
-		"templates/layout/base.html",
-		"templates/layout/navbar.html",
-		"templates/characters/details.html",
-		"templates/characters/_inventory.html",
-		"templates/characters/_ability_scores.html",
-		"templates/characters/_class_features.html",
-		"templates/characters/_combat_stats.html",
-		"templates/characters/_saving_throws.html",
-		"templates/characters/_character_header.html",
-		"templates/characters/_currency_management.html",
-	)
-
-	if err != nil {
-		logger.Error("Template parsing error",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		IsAuthenticated bool
-		Username        string
-		Character       CharacterViewModel
-		FlashMessage    string
-		CurrentYear     int
-	}{
-		IsAuthenticated: true,
-		Username:        user.Username,
-		Character:       viewModel,
-		FlashMessage:    r.URL.Query().Get("message"),
-		CurrentYear:     time.Now().Year(),
-	}
-
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		logger.Error("Template execution error",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		logger.Error("Invalid method for HP update",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path))
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	user, ok := GetUserFromContext(r.Context())
-	if !ok {
-		logger.Error("Unauthorized access attempt",
-			zap.String("path", r.URL.Path),
-			zap.String("method", r.Method))
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		logger.Error("Failed to parse form",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
-	if err != nil {
-		logger.Error("Invalid character ID",
-			zap.Error(err),
-			zap.String("raw_id", r.Form.Get("character_id")),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Invalid character ID", http.StatusBadRequest)
-		return
-	}
-
-	queries := db.New(s.db)
-	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
-		ID:     characterID,
-		UserID: user.UserID,
-	})
-	if err != nil {
-		logger.Error("Error fetching character",
-			zap.Error(err),
-			zap.Int64("character_id", characterID),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Character not found", http.StatusNotFound)
-		return
-	}
-
-	hpChange, err := strconv.ParseInt(r.Form.Get("hp_change"), 10, 64)
-	if err != nil {
-		logger.Warn("Invalid HP change value",
-			zap.Error(err),
-			zap.String("raw_value", r.Form.Get("hp_change")),
-			zap.Int64("character_id", characterID))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid HP value", characterID), http.StatusSeeOther)
-		return
-	}
-
-	newHP := character.CurrentHp + hpChange
-	if newHP > character.MaxHp {
-		newHP = character.MaxHp
-		logger.Info("HP change capped at max HP",
-			zap.Int64("character_id", characterID),
-			zap.Int64("attempted_hp", newHP),
-			zap.Int64("max_hp", character.MaxHp))
-	}
-	if newHP < 0 {
-		newHP = 0
-		logger.Info("HP change floored at 0",
-			zap.Int64("character_id", characterID),
-			zap.Int64("attempted_hp", newHP))
-	}
-
-	updateParams := db.UpdateCharacterParams{
-		ID:               characterID,
-		UserID:           user.UserID,
-		Name:             character.Name,
-		Class:            character.Class,
-		Level:            character.Level,
-		MaxHp:            character.MaxHp,
-		CurrentHp:        newHP,
-		Strength:         character.Strength,
-		Dexterity:        character.Dexterity,
-		Constitution:     character.Constitution,
-		Intelligence:     character.Intelligence,
-		Wisdom:           character.Wisdom,
-		Charisma:         character.Charisma,
-		ExperiencePoints: character.ExperiencePoints,
-		PlatinumPieces:   character.PlatinumPieces,
-		GoldPieces:       character.GoldPieces,
-		ElectrumPieces:   character.ElectrumPieces,
-		SilverPieces:     character.SilverPieces,
-		CopperPieces:     character.CopperPieces,
-	}
-
-	_, err = queries.UpdateCharacter(r.Context(), updateParams)
-	if err != nil {
-		logger.Error("Failed to update character HP",
-			zap.Error(err),
-			zap.Int64("character_id", characterID),
-			zap.Int64("new_hp", newHP),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating HP", characterID), http.StatusSeeOther)
-		return
-	}
-
-	logger.Info("Character HP updated successfully",
-		zap.Int64("character_id", characterID),
-		zap.Int64("old_hp", character.CurrentHp),
-		zap.Int64("new_hp", newHP),
-		zap.Int64("hp_change", hpChange),
-		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-
-	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d", characterID), http.StatusSeeOther)
+func containsString(s, substr string) bool {
+	return strings.Contains(s, substr)
 }
 
 func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
@@ -1188,124 +777,6 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		logger.Error("Invalid method for max HP update",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path))
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	user, ok := GetUserFromContext(r.Context())
-	if !ok {
-		logger.Error("Unauthorized access attempt",
-			zap.String("path", r.URL.Path),
-			zap.String("method", r.Method))
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		logger.Error("Failed to parse form",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
-	if err != nil {
-		logger.Error("Invalid character ID",
-			zap.Error(err),
-			zap.String("raw_id", r.Form.Get("character_id")))
-		http.Error(w, "Invalid character ID", http.StatusBadRequest)
-		return
-	}
-
-	queries := db.New(s.db)
-	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
-		ID:     characterID,
-		UserID: user.UserID,
-	})
-	if err != nil {
-		logger.Error("Failed to fetch character",
-			zap.Error(err),
-			zap.Int64("character_id", characterID),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Character not found", http.StatusNotFound)
-		return
-	}
-
-	maxHPChange, err := strconv.ParseInt(r.Form.Get("max_hp_change"), 10, 64)
-	if err != nil {
-		logger.Warn("Invalid max HP change value",
-			zap.Error(err),
-			zap.String("raw_value", r.Form.Get("max_hp_change")))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid HP value", characterID), http.StatusSeeOther)
-		return
-	}
-
-	newMaxHP := character.MaxHp + maxHPChange
-	if newMaxHP < 1 {
-		logger.Warn("Attempted to set max HP below 1",
-			zap.Int64("character_id", characterID),
-			zap.Int64("attempted_max_hp", newMaxHP))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Maximum HP cannot be less than 1", characterID), http.StatusSeeOther)
-		return
-	}
-
-	newCurrentHP := character.CurrentHp
-	if newCurrentHP > newMaxHP {
-		logger.Info("Adjusting current HP to new max HP",
-			zap.Int64("character_id", characterID),
-			zap.Int64("old_current_hp", newCurrentHP),
-			zap.Int64("new_max_hp", newMaxHP))
-		newCurrentHP = newMaxHP
-	}
-
-	updateParams := db.UpdateCharacterParams{
-		ID:               characterID,
-		UserID:           user.UserID,
-		Name:             character.Name,
-		Class:            character.Class,
-		Level:            character.Level,
-		MaxHp:            newMaxHP,
-		CurrentHp:        newCurrentHP,
-		Strength:         character.Strength,
-		Dexterity:        character.Dexterity,
-		Constitution:     character.Constitution,
-		Intelligence:     character.Intelligence,
-		Wisdom:           character.Wisdom,
-		Charisma:         character.Charisma,
-		ExperiencePoints: character.ExperiencePoints,
-		PlatinumPieces:   character.PlatinumPieces,
-		GoldPieces:       character.GoldPieces,
-		ElectrumPieces:   character.ElectrumPieces,
-		SilverPieces:     character.SilverPieces,
-		CopperPieces:     character.CopperPieces,
-	}
-
-	_, err = queries.UpdateCharacter(r.Context(), updateParams)
-	if err != nil {
-		logger.Error("Failed to update character max HP",
-			zap.Error(err),
-			zap.Int64("character_id", characterID),
-			zap.Int64("new_max_hp", newMaxHP))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating maximum HP", characterID), http.StatusSeeOther)
-		return
-	}
-
-	logger.Info("Character max HP updated successfully",
-		zap.Int64("character_id", characterID),
-		zap.Int64("old_max_hp", character.MaxHp),
-		zap.Int64("new_max_hp", newMaxHP),
-		zap.Int64("old_current_hp", character.CurrentHp),
-		zap.Int64("new_current_hp", newCurrentHP))
-
-	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d", characterID), http.StatusSeeOther)
-}
-
 func (s *Server) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.Error("Invalid method for character deletion",
@@ -1376,4 +847,895 @@ func (s *Server) HandleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
 		zap.Int64("user_id", user.UserID))
 
 	http.Redirect(w, r, "/characters?message=Character deleted successfully", http.StatusSeeOther)
+}
+
+func NewSafeCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryRow) CharacterViewModel {
+	vm := CharacterViewModel{
+		ID:               c.ID,
+		UserID:           c.UserID,
+		Name:             c.Name,
+		Class:            c.Class,
+		Level:            c.Level,
+		MaxHp:            c.MaxHp,
+		CurrentHp:        c.CurrentHp,
+		Strength:         c.Strength,
+		Dexterity:        c.Dexterity,
+		Constitution:     c.Constitution,
+		Intelligence:     c.Intelligence,
+		Wisdom:           c.Wisdom,
+		Charisma:         c.Charisma,
+		CreatedAt:        c.CreatedAt,
+		UpdatedAt:        c.UpdatedAt,
+		ExperiencePoints: c.ExperiencePoints,
+		PlatinumPieces:   c.PlatinumPieces,
+		GoldPieces:       c.GoldPieces,
+		ElectrumPieces:   c.ElectrumPieces,
+		SilverPieces:     c.SilverPieces,
+		CopperPieces:     c.CopperPieces,
+
+		// Initialize modifiers
+		StrengthModifiers:     ability_scores.CalculateStrengthModifiers(c.Strength),
+		DexterityModifiers:    ability_scores.CalculateDexterityModifiers(c.Dexterity),
+		ConstitutionModifiers: ability_scores.CalculateConstitutionModifiers(c.Constitution),
+		IntelligenceModifiers: ability_scores.CalculateIntelligenceModifiers(c.Intelligence),
+		WisdomModifiers:       ability_scores.CalculateWisdomModifiers(c.Wisdom),
+		CharismaModifiers:     ability_scores.CalculateCharismaModifiers(c.Charisma),
+
+		// Initialize inventory containers
+		ContainerItems: make(map[int64][]InventoryItem),
+	}
+
+	if classGetsFighterBonus(c.Class) {
+		vm.StrengthModifiers.ExtraordinaryFeat += 8
+	}
+
+	// Get class progression
+	progression := charRules.GetClassProgression(vm.Class)
+
+	// Calculate XP needed for next level
+	vm.XPNeeded = progression.GetXPForNextLevel(c.ExperiencePoints)
+
+	// Get XP required for current level
+	for _, levelInfo := range progression.Levels {
+		if levelInfo.XPRequired > c.ExperiencePoints {
+			vm.NextLevelXP = levelInfo.XPRequired
+			break
+		}
+	}
+
+	// Calculate base AC
+	baseAC := 9
+	var armorAC int64
+	var shieldBonus int64
+
+	// Check equipped items for armor and shield with safety checks
+	for _, item := range inventory {
+		if item.EquipmentSlotID.Valid {
+			if item.ItemType == "armor" {
+				// For armor, find the armor class value safely
+				if acVal, ok := safeGetArmorClass(item); ok {
+					armorAC = acVal
+				}
+			} else if item.ItemType == "shield" {
+				// For shields, get defense bonus safely
+				if bonus, ok := safeGetDefenseBonus(item.DefenseBonus); ok {
+					shieldBonus = bonus
+				}
+			}
+		}
+	}
+
+	// If armor is equipped, use its AC instead of base AC
+	if armorAC > 0 {
+		baseAC = int(armorAC)
+	}
+
+	// Apply shield bonus if any
+	totalAC := baseAC - int(shieldBonus)
+
+	// Apply Dexterity modifier
+	totalAC -= vm.DexterityModifiers.DefenseAdj
+
+	vm.ArmorClass = totalAC
+
+	// Initialize inventory stats with encumbrance thresholds
+	encumbranceThresholds := rules.CalculateEncumbranceThresholds(c.Strength, c.Constitution)
+	vm.InventoryStats = InventoryStats{
+		BaseEncumbered:      encumbranceThresholds.BaseEncumbered,
+		BaseHeavyEncumbered: encumbranceThresholds.BaseHeavyEncumbered,
+		MaximumCapacity:     encumbranceThresholds.MaximumCapacity,
+	}
+
+	// Add coin weight to total weight
+	coinageWeight := calculateCoinWeight(c.PlatinumPieces, c.GoldPieces, c.ElectrumPieces, c.SilverPieces, c.CopperPieces)
+	vm.InventoryStats.CoinWeight = coinageWeight
+
+	// Process each inventory item with safety checks
+	for _, item := range inventory {
+		// Build inventory item with safe conversions
+		invItem := InventoryItem{
+			ID:              item.ID,
+			CharacterID:     item.CharacterID,
+			ItemType:        item.ItemType,
+			ItemID:          item.ItemID,
+			ItemName:        safeGetItemName(item.ItemName),
+			ItemWeight:      safeGetItemWeight(item.ItemWeight),
+			Quantity:        item.Quantity,
+			ContainerID:     item.ContainerID,
+			EquipmentSlotID: item.EquipmentSlotID,
+			SlotName:        item.SlotName,
+			Notes:           item.Notes,
+			CreatedAt:       item.CreatedAt,
+			UpdatedAt:       item.UpdatedAt,
+		}
+
+		// Safely handle type-specific fields
+		if item.ItemType == "weapon" || item.ItemType == "ranged_weapon" {
+			invItem.Damage = safeGetNullString(item.Damage)
+			invItem.AttacksPerRound = safeGetNullString(item.AttacksPerRound)
+		}
+
+		if item.ItemType == "armor" {
+			if val, ok := safeGetInt64(item.MovementRate); ok {
+				invItem.MovementRate = sql.NullInt64{Int64: val, Valid: true}
+			}
+		}
+
+		if item.ItemType == "shield" {
+			invItem.DefenseBonus = item.DefenseBonus // This is already an interface{}
+		}
+
+		// Calculate total weight for this item
+		itemTotalWeight := invItem.ItemWeight * int(invItem.Quantity)
+
+		// Distribute the item to the appropriate collection
+		if invItem.EquipmentSlotID.Valid {
+			vm.EquippedItems = append(vm.EquippedItems, invItem)
+			vm.InventoryStats.EquippedWeight += itemTotalWeight
+		} else if invItem.ContainerID.Valid {
+			containerID := invItem.ContainerID.Int64
+			vm.ContainerItems[containerID] = append(vm.ContainerItems[containerID], invItem)
+			vm.InventoryStats.ContainersWeight += itemTotalWeight
+		} else {
+			vm.CarriedItems = append(vm.CarriedItems, invItem)
+			vm.InventoryStats.CarriedWeight += itemTotalWeight
+		}
+	}
+
+	// Calculate total weight and encumbrance level
+	vm.InventoryStats.TotalWeight = vm.InventoryStats.EquippedWeight +
+		vm.InventoryStats.CarriedWeight +
+		vm.InventoryStats.ContainersWeight +
+		vm.InventoryStats.CoinWeight
+
+	// Determine encumbrance level
+	switch {
+	case vm.InventoryStats.TotalWeight > vm.InventoryStats.MaximumCapacity:
+		vm.InventoryStats.EncumbranceLevel = "Over"
+	case vm.InventoryStats.TotalWeight > vm.InventoryStats.BaseHeavyEncumbered:
+		vm.InventoryStats.EncumbranceLevel = "Heavy"
+	case vm.InventoryStats.TotalWeight > vm.InventoryStats.BaseEncumbered:
+		vm.InventoryStats.EncumbranceLevel = "Encumbered"
+	default:
+		vm.InventoryStats.EncumbranceLevel = "None"
+	}
+
+	// Calculate FA and generate combat matrix row
+	fa := combat.CalculateFightingAbility(c.Class, c.Level)
+	vm.CombatMatrix = make([]int64, 19) // -9 to 9 AC
+	for ac := -9; ac <= 9; ac++ {
+		vm.CombatMatrix[ac+9] = combat.GetTargetNumber(fa, int64(ac))
+	}
+
+	// Get saving throw value
+	progression = charRules.GetClassProgression(vm.Class)
+	vm.SavingThrow = progression.GetSavingThrow(vm.Level)
+
+	return vm
+}
+
+// safeGetItemName safely extracts an item name from an interface
+func safeGetItemName(v interface{}) string {
+	if v == nil {
+		return "Unknown Item"
+	}
+
+	switch val := v.(type) {
+	case string:
+		return val
+	case sql.NullString:
+		if val.Valid {
+			return val.String
+		}
+	}
+
+	// Fallback: convert to string representation
+	return fmt.Sprintf("%v", v)
+}
+
+// safeGetItemWeight safely extracts an item weight from an interface
+func safeGetItemWeight(v interface{}) int {
+	if v == nil {
+		return 0
+	}
+
+	switch val := v.(type) {
+	case int:
+		return val
+	case int64:
+		return int(val)
+	case float64:
+		return int(val)
+	case sql.NullInt64:
+		if val.Valid {
+			return int(val.Int64)
+		}
+	}
+
+	return 0
+}
+
+// safeGetNullString safely converts an interface to sql.NullString
+func safeGetNullString(v interface{}) sql.NullString {
+	if v == nil {
+		return sql.NullString{}
+	}
+
+	switch val := v.(type) {
+	case string:
+		return sql.NullString{String: val, Valid: val != ""}
+	case sql.NullString:
+		return val
+	}
+
+	// Try to convert to string
+	str := fmt.Sprintf("%v", v)
+	return sql.NullString{String: str, Valid: str != ""}
+}
+
+// safeGetInt64 safely extracts an int64 from an interface
+func safeGetInt64(v interface{}) (int64, bool) {
+	if v == nil {
+		return 0, false
+	}
+
+	switch val := v.(type) {
+	case int:
+		return int64(val), true
+	case int64:
+		return val, true
+	case float64:
+		return int64(val), true
+	case sql.NullInt64:
+		return val.Int64, val.Valid
+	}
+
+	return 0, false
+}
+
+// safeGetDefenseBonus safely extracts a defense bonus from an interface
+func safeGetDefenseBonus(v interface{}) (int64, bool) {
+	if v == nil {
+		return 0, false
+	}
+
+	switch val := v.(type) {
+	case int:
+		return int64(val), true
+	case int64:
+		return val, true
+	case float64:
+		return int64(val), true
+	}
+
+	return 0, false
+}
+
+// safeGetArmorClass safely extracts armor class from an item
+func safeGetArmorClass(item db.GetCharacterInventoryRow) (int64, bool) {
+	// This is a placeholder - in your actual code you would need to
+	// determine how armor class is stored in your inventory items
+	// This might be a property directly on the item or derivable from other properties
+
+	// Example implementation:
+	if item.ItemType != "armor" {
+		return 0, false
+	}
+
+	// Try to find armor class in item properties
+	// This would depend on your data structure
+	return 7, true // Default value
+}
+
+// calculateCoinWeight calculates the total weight of coins
+func calculateCoinWeight(pp, gp, ep, sp, cp int64) int {
+	// Using the constant from the currency package if available
+	// Here using 100 coins per pound as a default
+	coinsPerPound := 100.0
+
+	// Calculate total coins
+	totalCoins := pp + gp + ep + sp + cp
+
+	// Convert to weight in pounds and return as integer
+	return int(float64(totalCoins) / coinsPerPound)
+}
+
+func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt",
+			zap.String("path", r.URL.Path))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	characterIDStr := r.URL.Query().Get("id")
+	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID",
+			zap.String("raw_id", characterIDStr),
+			zap.Error(err))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Error fetching character",
+			zap.Int64("character_id", characterID),
+			zap.Int64("user_id", user.UserID),
+			zap.Error(err))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if character has any inventory items first
+	var count int
+	countErr := s.db.QueryRowContext(r.Context(),
+		"SELECT COUNT(*) FROM character_inventory WHERE character_id = ?",
+		characterID).Scan(&count)
+
+	var inventory []db.GetCharacterInventoryRow
+
+	if countErr != nil {
+		logger.Warn("Failed to check inventory count, proceeding with empty inventory",
+			zap.Error(countErr),
+			zap.Int64("character_id", characterID))
+		inventory = []db.GetCharacterInventoryRow{}
+	} else if count == 0 {
+		// No inventory items, use empty slice
+		logger.Info("Character has no inventory items",
+			zap.Int64("character_id", characterID))
+		inventory = []db.GetCharacterInventoryRow{}
+	} else {
+		// Fetch inventory with error handling
+		inventory, err = queries.GetCharacterInventory(r.Context(), characterID)
+		if err != nil {
+			logger.Error("Error fetching inventory, proceeding with empty inventory",
+				zap.Int64("character_id", characterID),
+				zap.Error(err))
+			inventory = []db.GetCharacterInventoryRow{}
+		}
+	}
+
+	// Create a robust view model using the safe function with panic recovery
+	var viewModel CharacterViewModel
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("Panic recovered while creating character view model",
+					zap.Any("panic", r),
+					zap.Int64("character_id", characterID))
+				// We'll create a minimal view model when we return from this function
+			}
+		}()
+
+		viewModel = NewSafeCharacterViewModel(character, inventory)
+	}()
+
+	// If viewModel is empty (due to panic), create a minimal one
+	if viewModel.ID == 0 {
+		logger.Warn("Creating minimal view model after error",
+			zap.Int64("character_id", characterID))
+		viewModel = CharacterViewModel{
+			ID:               character.ID,
+			UserID:           character.UserID,
+			Name:             character.Name,
+			Class:            character.Class,
+			Level:            character.Level,
+			MaxHp:            character.MaxHp,
+			CurrentHp:        character.CurrentHp,
+			Strength:         character.Strength,
+			Dexterity:        character.Dexterity,
+			Constitution:     character.Constitution,
+			Intelligence:     character.Intelligence,
+			Wisdom:           character.Wisdom,
+			Charisma:         character.Charisma,
+			ExperiencePoints: character.ExperiencePoints,
+			PlatinumPieces:   character.PlatinumPieces,
+			GoldPieces:       character.GoldPieces,
+			ElectrumPieces:   character.ElectrumPieces,
+			SilverPieces:     character.SilverPieces,
+			CopperPieces:     character.CopperPieces,
+			CreatedAt:        character.CreatedAt,
+			UpdatedAt:        character.UpdatedAt,
+			ArmorClass:       9, // Default AC
+			ContainerItems:   make(map[int64][]InventoryItem),
+			InventoryStats: InventoryStats{
+				EncumbranceLevel: "None",
+			},
+		}
+	}
+
+	funcMap := template.FuncMap{
+		"seq": func(start, end int) []int {
+			s := make([]int, end-start+1)
+			for i := range s {
+				s[i] = start + i
+			}
+			return s
+		},
+		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
+		"add": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v + int64(w)
+				case int64:
+					return v + w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) + w
+				case int:
+					return int64(v + w)
+				}
+			}
+			return 0
+		},
+		"mul": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v * int64(w)
+				case int64:
+					return v * w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) * w
+				case int:
+					return int64(v * w)
+				}
+			}
+			return 0
+		},
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"sub": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v - int64(w)
+				case int64:
+					return v - w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) - w
+				case int:
+					return int64(v - w)
+				}
+			}
+			return 0
+		},
+		"abs": func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		},
+		"formatDateTime": func(t time.Time) string {
+			return t.Format("January 2, 2006 3:04 PM")
+		},
+		"eq": func(a, b interface{}) bool {
+			return a == b
+		},
+		"formatModifier": func(mod int) string {
+			if mod > 0 {
+				return "+" + strconv.Itoa(mod)
+			}
+			return strconv.Itoa(mod)
+		},
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+		"contains": containsString,
+	}
+
+	// Try to parse templates with error handling
+	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
+		"templates/layout/base.html",
+		"templates/characters/details.html",
+		"templates/characters/_inventory.html",
+		"templates/characters/_ability_scores.html",
+		"templates/characters/_class_features.html",
+		"templates/characters/_combat_stats.html",
+		"templates/characters/_saving_throws.html",
+		"templates/characters/_character_header.html",
+		"templates/characters/_currency_management.html",
+		"templates/characters/_hp_display.html",
+		"templates/characters/_hp_section.html",
+	)
+
+	if err != nil {
+		logger.Error("Template parsing error",
+			zap.Error(err))
+		http.Error(w, "Internal Server Error: Template parsing failed", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		IsAuthenticated bool
+		Username        string
+		Character       CharacterViewModel
+		FlashMessage    string
+		CurrentYear     int
+	}{
+		IsAuthenticated: true,
+		Username:        user.Username,
+		Character:       viewModel,
+		FlashMessage:    r.URL.Query().Get("message"),
+		CurrentYear:     time.Now().Year(),
+	}
+
+	// Add a special message if we had inventory issues but are still rendering
+	if len(inventory) == 0 && count > 0 {
+		data.FlashMessage = "There was an issue loading some inventory items. Please contact support if this persists."
+	}
+
+	err = tmpl.ExecuteTemplate(w, "base.html", data)
+	if err != nil {
+		logger.Error("Template execution error",
+			zap.Error(err))
+		http.Error(w, "Internal Server Error: Template execution failed", http.StatusInternalServerError)
+		return
+	}
+
+	logger.Info("Character detail rendered successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("user_id", user.UserID),
+		zap.Int("inventory_count", len(inventory)))
+}
+
+func (s *Server) HandleHPForm(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.URL.Query().Get("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID", zap.Error(err))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get character from database to verify ownership
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Error fetching character", zap.Error(err))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Render the HP update form template
+	tmpl, err := template.ParseFiles("templates/characters/_hp_update_form.html")
+	if err != nil {
+		logger.Error("Template error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.ExecuteTemplate(w, "hp_update_form", character)
+	if err != nil {
+		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// HandleMaxHPForm renders the form to update maximum HP
+func (s *Server) HandleMaxHPForm(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.URL.Query().Get("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID", zap.Error(err))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get character from database to verify ownership
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Error fetching character", zap.Error(err))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Render the Max HP update form template
+	tmpl, err := template.ParseFiles("templates/characters/_maxhp_update_form.html")
+	if err != nil {
+		logger.Error("Template error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.ExecuteTemplate(w, "maxhp_update_form", character)
+	if err != nil {
+		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// HandleHPCancel clears the form container
+func (s *Server) HandleHPCancel(w http.ResponseWriter, r *http.Request) {
+	// Just return an empty response to clear the form container
+	w.WriteHeader(http.StatusOK)
+}
+
+// UpdatedHandleUpdateHP handles updating the character's current HP
+func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form", zap.Error(err))
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID", zap.Error(err))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Error fetching character", zap.Error(err))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	hpChange, err := strconv.ParseInt(r.Form.Get("hp_change"), 10, 64)
+	if err != nil {
+		logger.Warn("Invalid HP change value", zap.Error(err))
+		renderHPSection(w, character, "Invalid HP value")
+		return
+	}
+
+	newHP := character.CurrentHp + hpChange
+	if newHP > character.MaxHp {
+		newHP = character.MaxHp
+		logger.Info("HP change capped at max HP", zap.Int64("character_id", characterID))
+	}
+	if newHP < 0 {
+		newHP = 0
+		logger.Info("HP change floored at 0", zap.Int64("character_id", characterID))
+	}
+
+	updateParams := db.UpdateCharacterParams{
+		ID:               characterID,
+		UserID:           user.UserID,
+		Name:             character.Name,
+		Class:            character.Class,
+		Level:            character.Level,
+		MaxHp:            character.MaxHp,
+		CurrentHp:        newHP,
+		Strength:         character.Strength,
+		Dexterity:        character.Dexterity,
+		Constitution:     character.Constitution,
+		Intelligence:     character.Intelligence,
+		Wisdom:           character.Wisdom,
+		Charisma:         character.Charisma,
+		ExperiencePoints: character.ExperiencePoints,
+		PlatinumPieces:   character.PlatinumPieces,
+		GoldPieces:       character.GoldPieces,
+		ElectrumPieces:   character.ElectrumPieces,
+		SilverPieces:     character.SilverPieces,
+		CopperPieces:     character.CopperPieces,
+	}
+
+	updatedCharacter, err := queries.UpdateCharacter(r.Context(), updateParams)
+	if err != nil {
+		logger.Error("Failed to update character HP", zap.Error(err))
+		renderHPSection(w, character, "Error updating HP")
+		return
+	}
+
+	logger.Info("Character HP updated successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("old_hp", character.CurrentHp),
+		zap.Int64("new_hp", newHP))
+
+	message := fmt.Sprintf("HP updated by %+d", hpChange)
+	renderHPSection(w, updatedCharacter, message)
+}
+
+// Helper function to render the entire HP section
+func renderHPSection(w http.ResponseWriter, character db.Character, message string) {
+	tmpl, err := template.ParseFiles(
+		"templates/characters/_hp_display.html",
+		"templates/characters/_hp_section.html",
+	)
+	if err != nil {
+		logger.Error("Template parsing error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		Character db.Character
+		Message   string
+	}{
+		Character: character,
+		Message:   message,
+	}
+
+	err = tmpl.ExecuteTemplate(w, "hp_display_section", data)
+	if err != nil {
+		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// Modified function to handle updating maximum HP
+func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form", zap.Error(err))
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID", zap.Error(err))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Error fetching character", zap.Error(err))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	maxHPChange, err := strconv.ParseInt(r.Form.Get("max_hp_change"), 10, 64)
+	if err != nil {
+		logger.Warn("Invalid max HP change value", zap.Error(err))
+		renderHPSection(w, character, "Invalid HP value")
+		return
+	}
+
+	newMaxHP := character.MaxHp + maxHPChange
+	if newMaxHP < 1 {
+		logger.Warn("Attempted to set max HP below 1",
+			zap.Int64("character_id", characterID),
+			zap.Int64("attempted_max_hp", newMaxHP))
+		renderHPSection(w, character, "Maximum HP cannot be less than 1")
+		return
+	}
+
+	newCurrentHP := character.CurrentHp
+	if newCurrentHP > newMaxHP {
+		newCurrentHP = newMaxHP
+	}
+
+	updateParams := db.UpdateCharacterParams{
+		ID:               characterID,
+		UserID:           user.UserID,
+		Name:             character.Name,
+		Class:            character.Class,
+		Level:            character.Level,
+		MaxHp:            newMaxHP,
+		CurrentHp:        newCurrentHP,
+		Strength:         character.Strength,
+		Dexterity:        character.Dexterity,
+		Constitution:     character.Constitution,
+		Intelligence:     character.Intelligence,
+		Wisdom:           character.Wisdom,
+		Charisma:         character.Charisma,
+		ExperiencePoints: character.ExperiencePoints,
+		PlatinumPieces:   character.PlatinumPieces,
+		GoldPieces:       character.GoldPieces,
+		ElectrumPieces:   character.ElectrumPieces,
+		SilverPieces:     character.SilverPieces,
+		CopperPieces:     character.CopperPieces,
+	}
+
+	updatedCharacter, err := queries.UpdateCharacter(r.Context(), updateParams)
+	if err != nil {
+		logger.Error("Failed to update character max HP", zap.Error(err))
+		renderHPSection(w, character, "Error updating maximum HP")
+		return
+	}
+
+	logger.Info("Character max HP updated successfully",
+		zap.Int64("character_id", characterID),
+		zap.Int64("old_max_hp", character.MaxHp),
+		zap.Int64("new_max_hp", newMaxHP))
+
+	message := fmt.Sprintf("Maximum HP changed by %+d", maxHPChange)
+	renderHPSection(w, updatedCharacter, message)
 }

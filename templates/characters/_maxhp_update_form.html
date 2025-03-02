@@ -1,0 +1,24 @@
+{{define "maxhp_update_form"}}
+<div class="form-card">
+    <h3>Modify Maximum HP</h3>
+    <form hx-post="/characters/maxhp/update" hx-target="#hp-display-section" hx-swap="outerHTML">
+        <input type="hidden" name="character_id" value="{{.ID}}" />
+        <div class="form-group">
+            <label for="max_hp_change">Change Max HP by:</label>
+            <input type="number" id="max_hp_change" name="max_hp_change" required />
+            <p class="help-text">Use positive numbers to increase, negative to decrease</p>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="button primary">
+                Update Maximum HP
+                <div class="htmx-indicator">
+                    <div class="spinner"></div>
+                </div>
+            </button>
+            <button class="button" hx-get="/characters/hp/cancel" hx-target="#hp-form-container" hx-swap="innerHTML">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
+{{end}}

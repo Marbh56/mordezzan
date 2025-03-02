@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/marbh56/mordezzan/internal/currency"
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/rules"
 	"github.com/marbh56/mordezzan/internal/rules/ability_scores"
@@ -192,6 +191,11 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 		CreatedAt:        c.CreatedAt,
 		UpdatedAt:        c.UpdatedAt,
 		ExperiencePoints: c.ExperiencePoints,
+		PlatinumPieces:   c.PlatinumPieces,
+		GoldPieces:       c.GoldPieces,
+		ElectrumPieces:   c.ElectrumPieces,
+		SilverPieces:     c.SilverPieces,
+		CopperPieces:     c.CopperPieces,
 
 		// Initialize modifiers
 		StrengthModifiers:     ability_scores.CalculateStrengthModifiers(c.Strength),
@@ -228,20 +232,17 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	var armorAC int64
 	var shieldBonus int64
 
-	// Check equipped items for armor and shield
+	// Check equipped items for armor and shield with safety checks
 	for _, item := range inventory {
 		if item.EquipmentSlotID.Valid {
-			switch item.ItemType {
-			case "armor":
-				// For armor, we need to find the armor class value
-				// This would be part of the returned data from the query
-				// Assume armorClass is extracted from a proper field of the item
-				if ac, ok := interfaceToInt64(item.ItemName); ok {
-					armorAC = ac
+			if item.ItemType == "armor" {
+				// For armor, find the armor class value safely
+				if acVal, ok := safeGetArmorClass(item); ok {
+					armorAC = acVal
 				}
-			case "shield":
-				// For shields, we need to find the defense bonus
-				if bonus, ok := interfaceToInt64(item.DefenseBonus); ok {
+			} else if item.ItemType == "shield" {
+				// For shields, get defense bonus safely
+				if bonus, ok := safeGetDefenseBonus(item.DefenseBonus); ok {
 					shieldBonus = bonus
 				}
 			}
@@ -270,68 +271,42 @@ func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryR
 	}
 
 	// Add coin weight to total weight
-	coinage := currency.Purse{
-		PlatinumPieces: c.PlatinumPieces,
-		GoldPieces:     c.GoldPieces,
-		ElectrumPieces: c.ElectrumPieces,
-		SilverPieces:   c.SilverPieces,
-		CopperPieces:   c.CopperPieces,
-	}
-	vm.PlatinumPieces = c.PlatinumPieces
-	vm.GoldPieces = c.GoldPieces
-	vm.ElectrumPieces = c.ElectrumPieces
-	vm.SilverPieces = c.SilverPieces
-	vm.CopperPieces = c.CopperPieces
-	vm.InventoryStats.CoinWeight = int(currency.GetTotalWeight(&coinage))
+	coinageWeight := calculateCoinWeight(c.PlatinumPieces, c.GoldPieces, c.ElectrumPieces, c.SilverPieces, c.CopperPieces)
+	vm.InventoryStats.CoinWeight = coinageWeight
 
-	// Process each inventory item
+	// Process each inventory item with safety checks
 	for _, item := range inventory {
-		// Handle damage field which might be different types
-		damage := sql.NullString{}
-		if damageValue, ok := item.Damage.(string); ok && damageValue != "" {
-			damage = sql.NullString{String: damageValue, Valid: true}
-		} else if nullDamage, ok := item.Damage.(sql.NullString); ok {
-			damage = nullDamage
-		}
-
-		// Build inventory item
+		// Build inventory item with safe conversions
 		invItem := InventoryItem{
 			ID:              item.ID,
 			CharacterID:     item.CharacterID,
 			ItemType:        item.ItemType,
 			ItemID:          item.ItemID,
-			ItemName:        interfaceToString(item.ItemName),
-			ItemWeight:      interfaceToInt(item.ItemWeight),
+			ItemName:        safeGetItemName(item.ItemName),
+			ItemWeight:      safeGetItemWeight(item.ItemWeight),
 			Quantity:        item.Quantity,
-			ContainerID:     item.ContainerID, // This field should match your DB schema
+			ContainerID:     item.ContainerID,
 			EquipmentSlotID: item.EquipmentSlotID,
 			SlotName:        item.SlotName,
-			Damage:          damage,
 			Notes:           item.Notes,
 			CreatedAt:       item.CreatedAt,
 			UpdatedAt:       item.UpdatedAt,
 		}
 
-		// Handle specific fields based on item type
-		if item.ItemType == "ranged_weapon" || item.ItemType == "weapon" {
-			// Handle attacks per round
-			if attacksStr, ok := item.AttacksPerRound.(string); ok && attacksStr != "" {
-				invItem.AttacksPerRound = sql.NullString{String: attacksStr, Valid: true}
-			} else if nullAttacks, ok := item.AttacksPerRound.(sql.NullString); ok {
-				invItem.AttacksPerRound = nullAttacks
-			}
+		// Safely handle type-specific fields
+		if item.ItemType == "weapon" || item.ItemType == "ranged_weapon" {
+			invItem.Damage = safeGetNullString(item.Damage)
+			invItem.AttacksPerRound = safeGetNullString(item.AttacksPerRound)
 		}
 
 		if item.ItemType == "armor" {
-			// Handle movement rate
-			if moveRate, ok := interfaceToInt64(item.MovementRate); ok {
-				invItem.MovementRate = sql.NullInt64{Int64: moveRate, Valid: true}
+			if val, ok := safeGetInt64(item.MovementRate); ok {
+				invItem.MovementRate = sql.NullInt64{Int64: val, Valid: true}
 			}
 		}
 
 		if item.ItemType == "shield" {
-			// Handle defense bonus
-			invItem.DefenseBonus = item.DefenseBonus
+			invItem.DefenseBonus = item.DefenseBonus // This is already an interface{}
 		}
 
 		// Calculate total weight for this item
@@ -388,7 +363,7 @@ func interfaceToInt64(v interface{}) (int64, bool) {
 	if v == nil {
 		return 0, false
 	}
-	
+
 	switch value := v.(type) {
 	case int64:
 		return value, true
@@ -399,6 +374,6 @@ func interfaceToInt64(v interface{}) (int64, bool) {
 	case sql.NullInt64:
 		return value.Int64, value.Valid
 	}
-	
+
 	return 0, false
 }

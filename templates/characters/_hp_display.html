@@ -1,0 +1,34 @@
+{{define "_hp_display"}}
+<div class="hp-section">
+    <h2>Hit Points</h2>
+    <div id="hp-display" class="stat-value">
+        {{.Character.CurrentHp}} / {{.Character.MaxHp}}
+    </div>
+
+    <div class="hp-actions">
+        <button class="button primary" hx-get="/characters/hp/form?character_id={{.Character.ID}}"
+            hx-target="#hp-form-container" hx-swap="innerHTML">
+            Update Current HP
+        </button>
+
+        <button class="button" hx-get="/characters/maxhp/form?character_id={{.Character.ID}}"
+            hx-target="#hp-form-container" hx-swap="innerHTML">
+            Modify Max HP
+        </button>
+
+        <form action="/characters/rest" method="POST" class="rest-form" style="display: inline">
+            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
+            <button type="submit" class="button">Rest (Roll Hit Dice)</button>
+        </form>
+    </div>
+
+    <!-- Container for dynamically loaded forms -->
+    <div id="hp-form-container"></div>
+
+    {{if .FlashMessage}}
+    <div class="hp-message {{if contains .FlashMessage " Error"}}error{{else}}success{{end}}">
+        {{.FlashMessage}}
+    </div>
+    {{end}}
+</div>
+{{end}}
