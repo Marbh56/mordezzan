@@ -10,6 +10,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/marbh56/mordezzan/internal/currency"
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/logger"
 	"github.com/marbh56/mordezzan/internal/rules"
@@ -49,146 +50,29 @@ func calculateTotalHP(baseHP, level, constitution int64) (int64, error) {
 	return totalHP, nil
 }
 
-func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		logger.Warn("Invalid HTTP method",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path))
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	user, ok := GetUserFromContext(r.Context())
-	if !ok {
-		logger.Error("Unauthorized access attempt",
-			zap.String("path", r.URL.Path))
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		logger.Error("Failed to parse form",
-			zap.Error(err))
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	characterID, err := strconv.ParseInt(r.Form.Get("character_id"), 10, 64)
+// Helper to render updated currency section
+func renderCurrencySection(w http.ResponseWriter, character CharacterViewModel, message string) {
+	tmpl, err := template.ParseFiles("templates/characters/_currency_section.html")
 	if err != nil {
-		logger.Error("Invalid character ID",
-			zap.String("raw_id", r.Form.Get("character_id")),
-			zap.Error(err))
-		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		logger.Error("Template parsing error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	amount, err := strconv.ParseInt(r.Form.Get("amount"), 10, 64)
+	data := struct {
+		Character CharacterViewModel
+		Message   string
+	}{
+		Character: character,
+		Message:   message,
+	}
+
+	err = tmpl.ExecuteTemplate(w, "_currency_section", data)
 	if err != nil {
-		logger.Warn("Invalid currency amount",
-			zap.String("raw_amount", r.Form.Get("amount")),
-			zap.Int64("character_id", characterID))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid amount", characterID), http.StatusSeeOther)
+		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	denomination := r.Form.Get("denomination")
-	if !isValidDenomination(denomination) {
-		logger.Warn("Invalid currency denomination",
-			zap.String("denomination", denomination),
-			zap.Int64("character_id", characterID))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Invalid denomination", characterID), http.StatusSeeOther)
-		return
-	}
-
-	queries := db.New(s.db)
-	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
-		ID:     characterID,
-		UserID: user.UserID,
-	})
-	if err != nil {
-		logger.Error("Error fetching character",
-			zap.Int64("character_id", characterID),
-			zap.Error(err))
-		http.Error(w, "Character not found", http.StatusNotFound)
-		return
-	}
-
-	updateParams := db.UpdateCharacterParams{
-		ID:               characterID,
-		UserID:           user.UserID,
-		Name:             character.Name,
-		Class:            character.Class,
-		Level:            character.Level,
-		MaxHp:            character.MaxHp,
-		CurrentHp:        character.CurrentHp,
-		Strength:         character.Strength,
-		Dexterity:        character.Dexterity,
-		Constitution:     character.Constitution,
-		Intelligence:     character.Intelligence,
-		Wisdom:           character.Wisdom,
-		Charisma:         character.Charisma,
-		ExperiencePoints: character.ExperiencePoints,
-		PlatinumPieces:   character.PlatinumPieces,
-		GoldPieces:       character.GoldPieces,
-		ElectrumPieces:   character.ElectrumPieces,
-		SilverPieces:     character.SilverPieces,
-		CopperPieces:     character.CopperPieces,
-	}
-
-	var oldAmount, newAmount int64
-	switch denomination {
-	case "pp":
-		oldAmount = character.PlatinumPieces
-		updateParams.PlatinumPieces = character.PlatinumPieces + amount
-		newAmount = updateParams.PlatinumPieces
-	case "gp":
-		oldAmount = character.GoldPieces
-		updateParams.GoldPieces = character.GoldPieces + amount
-		newAmount = updateParams.GoldPieces
-	case "ep":
-		oldAmount = character.ElectrumPieces
-		updateParams.ElectrumPieces = character.ElectrumPieces + amount
-		newAmount = updateParams.ElectrumPieces
-	case "sp":
-		oldAmount = character.SilverPieces
-		updateParams.SilverPieces = character.SilverPieces + amount
-		newAmount = updateParams.SilverPieces
-	case "cp":
-		oldAmount = character.CopperPieces
-		updateParams.CopperPieces = character.CopperPieces + amount
-		newAmount = updateParams.CopperPieces
-	}
-
-	_, err = queries.UpdateCharacter(r.Context(), updateParams)
-	if err != nil {
-		logger.Error("Error updating character currency",
-			zap.Int64("character_id", characterID),
-			zap.String("denomination", denomination),
-			zap.Int64("amount_change", amount),
-			zap.Error(err))
-		http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Error updating currency", characterID), http.StatusSeeOther)
-		return
-	}
-
-	logger.Info("Character currency updated",
-		zap.Int64("character_id", characterID),
-		zap.String("denomination", denomination),
-		zap.Int64("old_amount", oldAmount),
-		zap.Int64("new_amount", newAmount),
-		zap.Int64("change", amount))
-
-	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Currency updated successfully", characterID), http.StatusSeeOther)
-}
-
-func isValidDenomination(denom string) bool {
-	validDenoms := map[string]bool{
-		"pp": true,
-		"gp": true,
-		"ep": true,
-		"sp": true,
-		"cp": true,
-	}
-	return validDenoms[denom]
 }
 
 func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
@@ -946,8 +830,15 @@ func NewSafeCharacterViewModel(c db.Character, inventory []db.GetCharacterInvent
 		MaximumCapacity:     encumbranceThresholds.MaximumCapacity,
 	}
 
-	// Add coin weight to total weight
-	coinageWeight := calculateCoinWeight(c.PlatinumPieces, c.GoldPieces, c.ElectrumPieces, c.SilverPieces, c.CopperPieces)
+	// Add coin weight to total weight - using our currency package
+	purse := currency.Purse{
+		PlatinumPieces: c.PlatinumPieces,
+		GoldPieces:     c.GoldPieces,
+		ElectrumPieces: c.ElectrumPieces,
+		SilverPieces:   c.SilverPieces,
+		CopperPieces:   c.CopperPieces,
+	}
+	coinageWeight := int(currency.GetTotalWeight(&purse) + 0.5) // Round to nearest pound
 	vm.InventoryStats.CoinWeight = coinageWeight
 
 	// Process each inventory item with safety checks
@@ -1145,19 +1036,6 @@ func safeGetArmorClass(item db.GetCharacterInventoryRow) (int64, bool) {
 	// Try to find armor class in item properties
 	// This would depend on your data structure
 	return 7, true // Default value
-}
-
-// calculateCoinWeight calculates the total weight of coins
-func calculateCoinWeight(pp, gp, ep, sp, cp int64) int {
-	// Using the constant from the currency package if available
-	// Here using 100 coins per pound as a default
-	coinsPerPound := 100.0
-
-	// Calculate total coins
-	totalCoins := pp + gp + ep + sp + cp
-
-	// Convert to weight in pounds and return as integer
-	return int(float64(totalCoins) / coinsPerPound)
 }
 
 func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
@@ -1391,6 +1269,7 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		"templates/characters/_currency_management.html",
 		"templates/characters/_hp_display.html",
 		"templates/characters/_hp_section.html",
+		"templates/characters/_currency_section.html",
 	)
 
 	if err != nil {

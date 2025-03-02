@@ -3,6 +3,10 @@ package server
 import (
 	"database/sql"
 	"net/http"
+	"text/template"
+
+	"github.com/marbh56/mordezzan/internal/logger"
+	"go.uber.org/zap"
 )
 
 // Server represents our HTTP server and its dependencies
@@ -44,6 +48,8 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/maxhp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateMaxHP)))
 	mux.Handle("/characters/maxhp/form", s.AuthMiddleware(http.HandlerFunc(s.HandleMaxHPForm)))
 	mux.Handle("/characters/rest", s.AuthMiddleware(http.HandlerFunc(s.HandleRest)))
+
+	// Currency routes (protected)
 	mux.Handle("/characters/currency/update", s.AuthMiddleware(http.HandlerFunc(s.HandleCurrencyUpdate)))
 
 	// Inventory management routes (protected)
@@ -64,4 +70,20 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/", s.AuthMiddleware(http.HandlerFunc(s.HandleHome)))
 
 	return mux
+}
+
+func RenderTemplate(w http.ResponseWriter, templatePath, templateName string, data interface{}) {
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		logger.Error("Template parsing error", zap.Error(err), zap.String("template", templatePath))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.ExecuteTemplate(w, templateName, data)
+	if err != nil {
+		logger.Error("Template execution error", zap.Error(err), zap.String("template", templatePath))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }

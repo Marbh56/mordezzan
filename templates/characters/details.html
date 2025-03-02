@@ -1,8 +1,15 @@
 {{define "content"}}
 <div class="character-sheet">
-    {{template "character_header" .}} {{template "combat_stats" .}} {{template
-    "_currency_management" .}} {{template "ability_scores" .}} {{template
-    "saving_throws" .}} {{template "class_features" .}} {{template "inventory"
-    .}}
+    {{template "character_header" .}}
+    {{template "combat_stats" .}}
+
+    <div id="currency-section-container">
+        {{template "_currency_section" dict "Character" .Character}}
+    </div>
+
+    {{template "ability_scores" .}}
+    {{template "saving_throws" .}}
+    {{template "class_features" .}}
+    {{template "inventory" .}}
 </div>
 {{end}}
