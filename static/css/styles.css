@@ -826,3 +826,256 @@ input, select, textarea {
         gap: 0.5rem;
     }
 }
+
+/* Ability Scores Styles */
+.ability-scores-section {
+    background-color: rgba(43, 45, 66, 0.2);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin: 2rem 0;
+}
+
+.ability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.ability-card {
+    background-color: rgba(43, 45, 66, 0.3);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ability-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ability-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-SpaceCadet);
+    padding: 0.75rem 1rem;
+    border-bottom: 2px solid var(--color-FERed);
+}
+
+.ability-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--color-AFWhite);
+}
+
+.ability-score {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: var(--color-FERed);
+    background-color: rgba(217, 4, 41, 0.2);
+    border: 1px solid var(--color-FERed);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+}
+
+.ability-modifiers {
+    padding: 1rem;
+}
+
+.modifier-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(141, 153, 174, 0.2);
+}
+
+.modifier-row:last-child {
+    border-bottom: none;
+}
+
+.modifier-label {
+    font-weight: 500;
+    color: #ccc;
+}
+
+.modifier-value {
+    font-weight: bold;
+    color: var(--color-AFWhite);
+}
+
+.modifier-value.positive {
+    color: #4CAF50;
+}
+
+.modifier-value.negative {
+    color: var(--color-FERed);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .ability-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* For smaller screens, make cards more compact */
+@media (max-width: 480px) {
+    .ability-card {
+        font-size: 0.9rem;
+    }
+    
+    .ability-name {
+        font-size: 1.1rem;
+    }
+    
+    .ability-score {
+        font-size: 1.4rem;
+    }
+}
+
+/* Saving Throws Section Styles */
+.saving-throws-section {
+    background-color: rgba(237, 242, 244, 0.05);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin: 1.5rem 0;
+}
+
+.saving-throws-section h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+}
+
+.saving-throws-section p {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.saves-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+}
+
+.save-item {
+    background-color: rgba(43, 45, 66, 0.2);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.save-name {
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.save-mod {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.save-target {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--color-Red);
+}
+
+/* Class Features Section Styles */
+.class-features-section {
+    background-color: rgba(237, 242, 244, 0.05);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin: 2rem 0;
+}
+
+.class-abilities {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.ability-card {
+    background-color: rgba(43, 45, 66, 0.3);
+    border-radius: var(--border-radius);
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.ability-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ability-header {
+    background-color: var(--color-FERed);
+    color: var(--color-AFWhite);
+    margin: 0;
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.toggle-ability {
+    background: none;
+    border: none;
+    color: var(--color-AFWhite);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.2s ease;
+}
+
+.toggle-ability:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.toggle-icon {
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.ability-content {
+    padding: 1rem;
+}
+
+.ability-content p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.ability-content p:first-child {
+    margin-top: 0;
+}
+
+.ability-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .class-abilities {
+        grid-template-columns: 1fr;
+    }
+}
