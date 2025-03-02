@@ -691,109 +691,138 @@ input, select, textarea {
     max-width: 500px;
 }
 
-/* Currency Section Styles */
+/* Compact Currency Section Styles */
 .currency-section {
     background-color: rgba(237, 242, 244, 0.05);
     border-radius: var(--border-radius);
-    padding: 1.5rem;
-    margin: 2rem 0;
+    padding: 0.75rem;
+    margin: 1rem 0;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.currency-section h2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.toggle-button {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.6rem;
+    background-color: var(--color-CoolGray);
+    color: var(--color-SpaceCadet);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.toggle-button:hover {
+    background-color: var(--color-AFWhite);
 }
 
 .currency-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin: 1rem 0;
+    grid-template-columns: repeat(5, 1fr) 2fr;
+    gap: 0.3rem;
 }
 
 .currency-item {
     background-color: rgba(43, 45, 66, 0.2);
-    padding: 0.75rem;
+    padding: 0.4rem;
     border-radius: var(--border-radius);
-    transition: all 0.3s ease;
-}
-
-.currency-item.htmx-swapping {
-    opacity: 0.5;
-    background-color: var(--color-FERed);
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .currency-item .label {
     font-weight: bold;
-    display: block;
-    margin-bottom: 0.25rem;
+    color: #ccc;
 }
 
 .currency-item .value {
-    font-size: 1.2rem;
+    font-weight: bold;
 }
 
 .currency-item.coin-weight {
-    grid-column: 1/-1;
+    grid-column: span 6;
     background-color: rgba(43, 45, 66, 0.3);
 }
 
-.form-row {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
+#currency-form-container {
+    background-color: rgba(43, 45, 66, 0.2);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    margin-top: 0.5rem;
 }
 
-.form-row .form-group {
+.currency-form .form-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.currency-form .form-group {
     flex: 1;
-    min-width: 200px;
+}
+
+.currency-form label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+.currency-form input,
+.currency-form select {
+    width: 100%;
+    padding: 0.35rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-CoolGray);
+    background-color: var(--color-AFWhite);
+    font-size: 0.9rem;
+    color: var(--color-SpaceCadet);
+}
+
+.currency-form .help-text {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin-top: 0.2rem;
+}
+
+.currency-form .form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.currency-form .form-actions button {
+    font-size: 0.9rem;
+    padding: 0.35rem 0.75rem;
 }
 
 .currency-message {
-    margin-top: 1rem;
-    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
     border-radius: var(--border-radius);
-    animation: fadeOut 5s forwards 2s;
+    font-size: 0.85rem;
+    animation: fadeOut 5s forwards 1s;
 }
 
-.currency-message.success {
-    background-color: rgba(76, 175, 80, 0.2);
-    color: #4CAF50;
-    border: 1px solid #4CAF50;
-}
-
-.currency-message.error {
-    background-color: rgba(244, 67, 54, 0.2);
-    color: #F44336;
-    border: 1px solid #F44336;
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0.2; }
-}
-
-/* Enhance hover effects for better UX */
-.currency-item:hover {
-    transform: translateY(-2px);
-    background-color: rgba(43, 45, 66, 0.3);
-}
-
-/* Button improvements */
-.currency-form button {
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.currency-form button:hover {
-    transform: translateY(-2px);
-}
-
-.currency-form button:active {
-    transform: translateY(1px);
-}
-
-/* Input focus styling */
-.currency-form input:focus,
-.currency-form select:focus {
-    outline: none;
-    border-color: var(--color-FERed);
-    box-shadow: 0 0 0 2px rgba(217, 4, 41, 0.2);
+@media (max-width: 768px) {
+    .currency-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .currency-item.coin-weight {
+        grid-column: span 3;
+    }
+    
+    .currency-form .form-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 }

@@ -1,76 +1,79 @@
 {{define "_currency_section"}}
 <div id="currency-section" class="currency-section">
-    <h2>Currency</h2>
+    <h2>Currency <button class="toggle-button" id="toggle-currency-form">Manage</button></h2>
 
     {{if .Error}}
     <div class="currency-message error">{{.Error}}</div>
     {{else}}
     <div class="current-currency">
-        <h3>Current Holdings</h3>
         <div class="currency-grid">
             <div class="currency-item">
-                <span class="label">Platinum:</span>
-                <span class="value">{{.Character.PlatinumPieces}} pp</span>
+                <span class="label">PP:</span>
+                <span class="value">{{.Character.PlatinumPieces}}</span>
             </div>
             <div class="currency-item">
-                <span class="label">Gold:</span>
-                <span class="value">{{.Character.GoldPieces}} gp</span>
+                <span class="label">GP:</span>
+                <span class="value">{{.Character.GoldPieces}}</span>
             </div>
             <div class="currency-item">
-                <span class="label">Electrum:</span>
-                <span class="value">{{.Character.ElectrumPieces}} ep</span>
+                <span class="label">EP:</span>
+                <span class="value">{{.Character.ElectrumPieces}}</span>
             </div>
             <div class="currency-item">
-                <span class="label">Silver:</span>
-                <span class="value">{{.Character.SilverPieces}} sp</span>
+                <span class="label">SP:</span>
+                <span class="value">{{.Character.SilverPieces}}</span>
             </div>
             <div class="currency-item">
-                <span class="label">Copper:</span>
-                <span class="value">{{.Character.CopperPieces}} cp</span>
+                <span class="label">CP:</span>
+                <span class="value">{{.Character.CopperPieces}}</span>
             </div>
             <div class="currency-item coin-weight">
-                <span class="label">Coin Weight:</span>
+                <span class="label">Weight:</span>
                 <span class="value">{{.Character.InventoryStats.CoinWeight}} lbs</span>
             </div>
         </div>
     </div>
 
-    <div class="currency-management">
-        <h3>Add/Remove Currency</h3>
-        <form hx-post="/characters/currency/update" hx-target="#currency-section" hx-swap="outerHTML"
-            class="currency-form">
-            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
+    <div id="currency-form-container" style="display: none;">
+        <div class="currency-management">
+            <form hx-post="/characters/currency/update" hx-target="#currency-section" hx-swap="outerHTML"
+                class="currency-form">
+                <input type="hidden" name="character_id" value="{{.Character.ID}}" />
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="amount">Amount:</label>
-                    <input type="number" id="amount" name="amount" required />
-                    <p class="help-text">
-                        Use positive to add, negative to subtract
-                    </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="amount">Amount:</label>
+                        <input type="number" id="amount" name="amount" required />
+                        <p class="help-text">
+                            Use positive to add, negative to subtract
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="denomination">Type:</label>
+                        <select id="denomination" name="denomination" required>
+                            <option value="pp">Platinum (pp)</option>
+                            <option value="gp">Gold (gp)</option>
+                            <option value="ep">Electrum (ep)</option>
+                            <option value="sp">Silver (sp)</option>
+                            <option value="cp">Copper (cp)</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="denomination">Denomination:</label>
-                    <select id="denomination" name="denomination" required>
-                        <option value="pp">Platinum (pp)</option>
-                        <option value="gp">Gold (gp)</option>
-                        <option value="ep">Electrum (ep)</option>
-                        <option value="sp">Silver (sp)</option>
-                        <option value="cp">Copper (cp)</option>
-                    </select>
+                <div class="form-actions">
+                    <button type="submit" class="button">
+                        Update
+                        <span class="htmx-indicator">
+                            <div class="spinner"></div>
+                        </span>
+                    </button>
+                    <button type="button" class="button" id="cancel-currency-form">
+                        Cancel
+                    </button>
                 </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="button">
-                    Update Currency
-                    <span class="htmx-indicator">
-                        <div class="spinner"></div>
-                    </span>
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 
     <!-- Message area for feedback -->
@@ -80,5 +83,57 @@
     </div>
     {{end}}
     {{end}}
+
+    <script>
+        // Function to setup event listeners for currency form toggles
+        function setupCurrencyFormListeners() {
+            const toggleButton = document.getElementById('toggle-currency-form');
+            const formContainer = document.getElementById('currency-form-container');
+            const cancelButton = document.getElementById('cancel-currency-form');
+
+            if (toggleButton && formContainer && cancelButton) {
+                // Remove existing listeners to prevent duplicates
+                toggleButton.removeEventListener('click', toggleCurrencyForm);
+                cancelButton.removeEventListener('click', hideCurrencyForm);
+
+                // Add listeners
+                toggleButton.addEventListener('click', toggleCurrencyForm);
+                cancelButton.addEventListener('click', hideCurrencyForm);
+            }
+        }
+
+        // Toggle function
+        function toggleCurrencyForm() {
+            const formContainer = document.getElementById('currency-form-container');
+            const toggleButton = document.getElementById('toggle-currency-form');
+
+            if (formContainer && toggleButton) {
+                const isVisible = formContainer.style.display !== 'none';
+                formContainer.style.display = isVisible ? 'none' : 'block';
+                toggleButton.textContent = isVisible ? 'Manage' : 'Hide';
+            }
+        }
+
+        // Hide function
+        function hideCurrencyForm() {
+            const formContainer = document.getElementById('currency-form-container');
+            const toggleButton = document.getElementById('toggle-currency-form');
+
+            if (formContainer && toggleButton) {
+                formContainer.style.display = 'none';
+                toggleButton.textContent = 'Manage';
+            }
+        }
+
+        // Setup listeners when DOM is ready
+        document.addEventListener('DOMContentLoaded', setupCurrencyFormListeners);
+
+        // Re-setup listeners after HTMX swaps content
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail.target.id === 'currency-section') {
+                setupCurrencyFormListeners();
+            }
+        });
+    </script>
 </div>
 {{end}}

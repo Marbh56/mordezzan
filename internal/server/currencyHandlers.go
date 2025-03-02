@@ -167,10 +167,15 @@ func renderCurrencyError(w http.ResponseWriter, errMsg string) {
 	w.Header().Set("HX-Reswap", "outerHTML")
 	w.WriteHeader(http.StatusBadRequest)
 
+	// We need to include both Error and Character fields to match the template structure
 	data := struct {
-		Error string
+		Error     string
+		Character CharacterViewModel // Empty struct for template compatibility
+		Message   string             // Empty string for template compatibility
 	}{
-		Error: errMsg,
+		Error:     errMsg,
+		Character: CharacterViewModel{}, // Empty character model
+		Message:   "",
 	}
 
 	RenderTemplate(w, "templates/characters/_currency_section.html", "_currency_section", data)
@@ -181,9 +186,11 @@ func renderCurrencySectionUpdate(w http.ResponseWriter, character CharacterViewM
 	data := struct {
 		Character CharacterViewModel
 		Message   string
+		Error     string
 	}{
 		Character: character,
 		Message:   message,
+		Error:     "",
 	}
 
 	RenderTemplate(w, "templates/characters/_currency_section.html", "_currency_section", data)

@@ -98,68 +98,99 @@ func GetTotalWeight(p *Purse) float64 {
 	return float64(totalCoins) / CoinsPerPound
 }
 
-// AddToPurse adds an amount of a specific denomination to the purse,
-// automatically converting to the most efficient mix of coins
 func AddToPurse(p *Purse, amount int64, denom Denomination) {
-	// Convert the amount to copper pieces (the base unit)
-	copperAmount, _ := Convert(amount, denom, CopperPieces)
-
-	// Start with the highest denomination and work down
-	if copperAmount >= 500 {
-		p.PlatinumPieces += copperAmount / 500
-		copperAmount = copperAmount % 500
+	switch denom {
+	case PlatinumPieces:
+		p.PlatinumPieces += amount
+	case GoldPieces:
+		p.GoldPieces += amount
+	case ElectrumPieces:
+		p.ElectrumPieces += amount
+	case SilverPieces:
+		p.SilverPieces += amount
+	case CopperPieces:
+		p.CopperPieces += amount
 	}
-
-	if copperAmount >= 100 {
-		p.GoldPieces += copperAmount / 100
-		copperAmount = copperAmount % 100
-	}
-
-	if copperAmount >= 50 {
-		p.ElectrumPieces += copperAmount / 50
-		copperAmount = copperAmount % 50
-	}
-
-	if copperAmount >= 10 {
-		p.SilverPieces += copperAmount / 10
-		copperAmount = copperAmount % 10
-	}
-
-	p.CopperPieces += copperAmount
 }
 
-// RemoveFromPurse removes an amount of a specific denomination from the purse
-// Returns true if successful, false if there aren't enough coins
 func RemoveFromPurse(p *Purse, amount int64, denom Denomination) bool {
-	// Calculate the total copper value in the purse
-	totalCopper := (p.PlatinumPieces * 500) +
-		(p.GoldPieces * 100) +
-		(p.ElectrumPieces * 50) +
-		(p.SilverPieces * 10) +
-		p.CopperPieces
+	switch denom {
+	case PlatinumPieces:
+		if p.PlatinumPieces >= amount {
+			p.PlatinumPieces -= amount
+			return true
+		}
+		// Not enough platinum
+		return false
 
-	// Calculate copper value of the amount to remove
-	removalCopper, _ := Convert(amount, denom, CopperPieces)
+	case GoldPieces:
+		if p.GoldPieces >= amount {
+			p.GoldPieces -= amount
+			return true
+		}
+		// Not enough gold, try converting from platinum
+		ppNeeded := (amount - p.GoldPieces + 4) / 5 // Ceiling division
+		if p.PlatinumPieces >= ppNeeded {
+			p.PlatinumPieces -= ppNeeded
+			p.GoldPieces += ppNeeded*5 - amount
+			return true
+		}
+		return false
 
-	// Check if there's enough currency
-	if removalCopper > totalCopper {
+	case ElectrumPieces:
+		if p.ElectrumPieces >= amount {
+			p.ElectrumPieces -= amount
+			return true
+		}
+		// Try converting from higher denominations
+		// First check if we have gold pieces
+		if p.GoldPieces > 0 {
+			gpNeeded := (amount - p.ElectrumPieces + 1) / 2 // Ceiling division
+			if p.GoldPieces >= gpNeeded {
+				p.GoldPieces -= gpNeeded
+				p.ElectrumPieces += gpNeeded*2 - amount
+				return true
+			}
+		}
+		// Not enough direct conversion possible
+		return false
+
+	case SilverPieces:
+		if p.SilverPieces >= amount {
+			p.SilverPieces -= amount
+			return true
+		}
+		// Try from electrum first
+		if p.ElectrumPieces > 0 {
+			epNeeded := (amount - p.SilverPieces + 4) / 5 // Ceiling division
+			if p.ElectrumPieces >= epNeeded {
+				p.ElectrumPieces -= epNeeded
+				p.SilverPieces += epNeeded*5 - amount
+				return true
+			}
+		}
+		// Not enough direct conversion possible
+		return false
+
+	case CopperPieces:
+		if p.CopperPieces >= amount {
+			p.CopperPieces -= amount
+			return true
+		}
+		// Try from silver first
+		if p.SilverPieces > 0 {
+			spNeeded := (amount - p.CopperPieces + 9) / 10 // Ceiling division
+			if p.SilverPieces >= spNeeded {
+				p.SilverPieces -= spNeeded
+				p.CopperPieces += spNeeded*10 - amount
+				return true
+			}
+		}
+		// Not enough direct conversion possible
 		return false
 	}
 
-	// Calculate what remains after removal
-	remaining := totalCopper - removalCopper
-
-	// Reset the purse
-	p.PlatinumPieces = 0
-	p.GoldPieces = 0
-	p.ElectrumPieces = 0
-	p.SilverPieces = 0
-	p.CopperPieces = 0
-
-	// Refill the purse with the remaining amount in the most efficient way
-	AddToPurse(p, remaining, CopperPieces)
-
-	return true
+	return false
 }
 
 // FormatPurse formats the purse contents as a readable string
