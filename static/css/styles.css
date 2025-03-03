@@ -1079,3 +1079,215 @@ input, select, textarea {
         grid-template-columns: 1fr;
     }
 }
+
+/* Inventory Section Styling */
+.inventory-section {
+    margin: 2rem 0;
+}
+
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.stat-block {
+    background-color: rgba(237, 242, 244, 0.05);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--box-shadow);
+}
+
+.inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.inventory-table th,
+.inventory-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(237, 242, 244, 0.1);
+}
+
+.inventory-table th {
+    background-color: rgba(43, 45, 66, 0.3);
+    font-weight: bold;
+}
+
+.inventory-table tr:hover {
+    background-color: rgba(237, 242, 244, 0.02);
+}
+
+/* Item actions styling */
+.item-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Dropdown styling */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    background-color: var(--color-CoolGray);
+    color: var(--color-SpaceCadet);
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.dropdown-toggle:hover {
+    background-color: var(--color-AFWhite);
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: var(--color-SpaceCadet);
+    min-width: 250px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    z-index: 10;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown-content select {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    background-color: var(--color-AFWhite);
+    color: var(--color-SpaceCadet);
+    border: 1px solid var(--color-CoolGray);
+    border-radius: var(--border-radius);
+    padding: 0.35rem;
+}
+
+.button.small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+    width: 100%;
+}
+
+/* Status indicators */
+.empty-message {
+    padding: 0.5rem;
+    color: #aaa;
+    font-style: italic;
+    text-align: center;
+}
+
+.container-capacity {
+    font-size: 0.85rem;
+    color: #aaa;
+    font-weight: normal;
+}
+
+.encumbrance-status {
+    padding: 0.5rem;
+    border-radius: 3px;
+    margin: 0.5rem 0;
+    font-weight: bold;
+}
+
+.encumbrance-status.None {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+}
+
+.encumbrance-status.Encumbered {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: #FF9800;
+}
+
+.encumbrance-status.Heavy {
+    background-color: rgba(255, 87, 34, 0.1);
+    color: #FF5722;
+}
+
+.encumbrance-status.Over {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #F44336;
+}
+
+.notes {
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-top: 0.25rem;
+    color: #aaa;
+}
+
+/* Container section styling */
+.container-section {
+    border-left: 3px solid var(--color-CoolGray);
+}
+
+.container-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .inventory-table thead {
+        display: none;
+    }
+    
+    .inventory-table, 
+    .inventory-table tbody, 
+    .inventory-table tr, 
+    .inventory-table td {
+        display: block;
+        width: 100%;
+    }
+    
+    .inventory-table tr {
+        margin-bottom: 1rem;
+        border: 1px solid rgba(237, 242, 244, 0.1);
+        border-radius: var(--border-radius);
+    }
+    
+    .inventory-table td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+        border-bottom: 1px solid rgba(237, 242, 244, 0.05);
+    }
+    
+    .inventory-table td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0.75rem;
+        width: 45%;
+        padding-right: 0.5rem;
+        text-align: left;
+        font-weight: bold;
+    }
+    
+    .item-actions {
+        justify-content: flex-end;
+    }
+    
+    .container-stats {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}

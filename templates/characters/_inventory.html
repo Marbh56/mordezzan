@@ -1,207 +1,88 @@
-{{define "weapon_entry"}}
-<div class="weapon-entry">
-    <h5>
-        {{.ItemName}} {{if .MagicalWeaponID.Valid}}
-        <span class="magical-weapon">(Magical)</span>
-        {{end}}
-    </h5>
-    <div class="weapon-details">
-        {{if .Damage.Valid}}
-        <p>
-            <strong>Damage:</strong> {{.Damage.String}} {{if
-            .MagicalWeaponID.Valid}} {{with .EnhancementBonus}} {{if gt .
-            0}}+{{.}}{{end}} {{if lt . 0}}{{.}}{{end}} {{end}} {{end}} {{if eq
-            .ItemType "weapon"}} {{with $.Character.StrengthModifiers}} {{if gt
-            .DamageMod 0}}+{{.DamageMod}}{{end}} {{if lt .DamageMod
-            0}}{{.DamageMod}}{{end}} {{end}} {{end}}
-        </p>
-        {{end}}
-
-        <p>
-            <strong>To Hit:</strong>
-            {{if .MagicalWeaponID.Valid}} {{with .EnhancementBonus}} {{if gt .
-            0}}+{{.}}{{end}} {{if lt . 0}}{{.}}{{end}} {{end}} {{end}} {{if eq
-            .ItemType "weapon"}} {{with $.Character.StrengthModifiers}} {{if gt
-            .AttackMod 0}}+{{.AttackMod}}{{end}} {{if lt .AttackMod
-            0}}{{.AttackMod}}{{end}} {{end}} {{else}} {{with
-            $.Character.DexterityModifiers}} {{if gt .AttackMod
-            0}}+{{.AttackMod}}{{end}} {{if lt .AttackMod
-            0}}{{.AttackMod}}{{end}} {{end}} {{end}}
-        </p>
-
-        {{if .AttacksPerRound.Valid}}
-        <p>
-            <strong>Attacks per Round:</strong>
-            {{.AttacksPerRound.String}}
-        </p>
-        {{end}}
-
-        <form
-            action="/characters/inventory/remove"
-            method="POST"
-            class="inline-form"
-        >
-            <input
-                type="hidden"
-                name="character_id"
-                value="{{$.Character.ID}}"
-            />
-            <input type="hidden" name="item_id" value="{{.ID}}" />
-            <button type="submit" class="unequip-button">Unequip</button>
-        </form>
-    </div>
-</div>
-{{end}} {{define "inventory"}}
+{{define "inventory"}}
 <div class="inventory-section">
     <div class="inventory-header">
         <h2>Inventory and Equipment</h2>
-        <a
-            href="/characters/inventory/add?character_id={{.Character.ID}}"
-            class="add-item-button"
-            >Add Item</a
-        >
-    </div>
-
-    <!-- Equipment Grid -->
-    <div class="equipment-section">
-        <h3>Equipped Items</h3>
-
-        <!-- Weapons Section -->
-        <div class="equipped-section weapons-section">
-            <h4>Weapons</h4>
-            <div class="weapons-grid">
-                {{range .Character.EquippedItems}} {{if or (eq .ItemType
-                "weapon") (eq .ItemType "ranged_weapon")}} {{template
-                "weapon_entry" .}} {{end}} {{end}}
-            </div>
-        </div>
-
-        <!-- Armor Section -->
-        <div class="equipped-section armor-section">
-            <h4>Armor & Shields</h4>
-            <div class="armor-grid">
-                {{range .Character.EquippedItems}} {{if or (eq .ItemType
-                "armor") (eq .ItemType "shield")}}
-                <div class="armor-entry">
-                    <h5>{{.ItemName}}</h5>
-                    <div class="armor-details">
-                        {{if eq .ItemType "armor"}} {{if .MovementRate.Valid}}
-                        <p>
-                            <strong>Movement Rate:</strong>
-                            {{.MovementRate.Int64}} ft
-                        </p>
-                        {{end}} {{end}} {{if eq .ItemType "shield"}}
-                        <p>
-                            <strong>Defense Bonus:</strong> +{{.DefenseBonus}}
-                        </p>
-                        {{end}}
-                        <p><strong>Weight:</strong> {{.ItemWeight}} lbs</p>
-
-                        <form
-                            action="/characters/inventory/remove"
-                            method="POST"
-                            class="inline-form"
-                        >
-                            <input
-                                type="hidden"
-                                name="character_id"
-                                value="{{$.Character.ID}}"
-                            />
-                            <input
-                                type="hidden"
-                                name="item_id"
-                                value="{{.ID}}"
-                            />
-                            <button type="submit" class="unequip-button">
-                                Unequip
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                {{end}} {{end}}
-            </div>
-        </div>
-
-        <!-- Other Equipment Section -->
-        <div class="equipped-section other-section">
-            <h4>Other Equipment</h4>
-            <div class="other-grid">
-                {{range .Character.EquippedItems}} {{if and (ne .ItemType
-                "weapon") (ne .ItemType "ranged_weapon") (ne .ItemType "armor")
-                (ne .ItemType "shield")}}
-                <div class="equipment-entry">
-                    <h5>{{.ItemName}}</h5>
-                    <div class="equipment-details">
-                        <p><strong>Slot:</strong> {{.SlotName.String}}</p>
-                        {{if .Notes.Valid}}
-                        <p><strong>Notes:</strong> {{.Notes.String}}</p>
-                        {{end}}
-                        <p><strong>Weight:</strong> {{.ItemWeight}} lbs</p>
-
-                        <form
-                            action="/characters/inventory/remove"
-                            method="POST"
-                            class="inline-form"
-                        >
-                            <input
-                                type="hidden"
-                                name="character_id"
-                                value="{{$.Character.ID}}"
-                            />
-                            <input
-                                type="hidden"
-                                name="item_id"
-                                value="{{.ID}}"
-                            />
-                            <button type="submit" class="unequip-button">
-                                Unequip
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                {{end}} {{end}}
-            </div>
-        </div>
+        <a href="/characters/inventory/add?character_id={{.Character.ID}}" class="button primary">Add Item</a>
     </div>
 
     <!-- Encumbrance Information -->
-    <div class="encumbrance-info">
+    <div class="encumbrance-info stat-block">
         <h3>Encumbrance Status</h3>
         <div class="encumbrance-details">
-            <p>Total Weight: {{.Character.InventoryStats.TotalWeight}} lbs</p>
-            <div
-                class="encumbrance-status {{.Character.InventoryStats.EncumbranceLevel}}"
-            >
-                Status: {{.Character.InventoryStats.EncumbranceLevel}}
+            <p><strong>Total Weight:</strong> {{.Character.InventoryStats.TotalWeight}} lbs</p>
+            <div class="encumbrance-status {{.Character.InventoryStats.EncumbranceLevel}}">
+                <strong>Status:</strong> {{.Character.InventoryStats.EncumbranceLevel}}
             </div>
             <div class="encumbrance-thresholds">
-                <div>
-                    Encumbered at: {{.Character.InventoryStats.BaseEncumbered}}
-                    lbs
-                </div>
-                <div>
-                    Heavily Encumbered at:
-                    {{.Character.InventoryStats.BaseHeavyEncumbered}} lbs
-                </div>
-                <div>
-                    Maximum Capacity:
-                    {{.Character.InventoryStats.MaximumCapacity}} lbs
-                </div>
+                <div><strong>Encumbered at:</strong> {{.Character.InventoryStats.BaseEncumbered}} lbs</div>
+                <div><strong>Heavily Encumbered at:</strong> {{.Character.InventoryStats.BaseHeavyEncumbered}} lbs</div>
+                <div><strong>Maximum Capacity:</strong> {{.Character.InventoryStats.MaximumCapacity}} lbs</div>
             </div>
         </div>
     </div>
 
-    <!-- Carried Items -->
-    {{if .Character.CarriedItems}}
-    <div class="carried-items">
-        <h3>Carried Items</h3>
+    <!-- Equipment Section -->
+    <div class="equipment-section stat-block">
+        <h3>Equipped Items</h3>
+
+        {{if .Character.EquippedItems}}
         <table class="inventory-table">
             <thead>
                 <tr>
                     <th>Item</th>
+                    <th>Slot</th>
+                    <th>Properties</th>
                     <th>Weight</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Character.EquippedItems}}
+                <tr>
+                    <td>{{.ItemName}}</td>
+                    <td>{{.SlotName.String}}</td>
+                    <td>
+                        {{if eq .ItemType "weapon"}}
+                        {{if .Damage.Valid}}Damage: {{.Damage.String}}, {{end}}
+                        {{if .AttacksPerRound.Valid}}Attacks: {{.AttacksPerRound.String}}{{end}}
+                        {{else if eq .ItemType "armor"}}
+                        {{if .MovementRate.Valid}}Movement: {{.MovementRate.Int64}} ft{{end}}
+                        {{else if eq .ItemType "shield"}}
+                        Defense: +{{.DefenseBonus}}
+                        {{end}}
+                        {{if .Notes.Valid}}
+                        <div class="notes">{{.Notes.String}}</div>
+                        {{end}}
+                    </td>
+                    <td>{{.ItemWeight}} lbs</td>
+                    <td>
+                        <form action="/characters/inventory/unequip" method="POST" style="display: inline">
+                            <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                            <input type="hidden" name="item_id" value="{{.ID}}">
+                            <button type="submit" class="button">Unequip</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-message">No equipped items</p>
+        {{end}}
+    </div>
+
+    <!-- Carried Items -->
+    <div class="carried-items stat-block">
+        <h3>Carried Items</h3>
+
+        {{if .Character.CarriedItems}}
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Type</th>
                     <th>Quantity</th>
-                    <th>Notes</th>
+                    <th>Weight</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -209,39 +90,262 @@
                 {{range .Character.CarriedItems}}
                 <tr>
                     <td>{{.ItemName}}</td>
-                    <td>{{.ItemWeight}} lbs</td>
+                    <td>{{.ItemType}}</td>
                     <td>{{.Quantity}}</td>
-                    <td>{{if .Notes.Valid}}{{.Notes.String}}{{end}}</td>
+                    <td>{{.ItemWeight}} lbs</td>
                     <td class="item-actions">
-                        <form
-                            action="/characters/inventory/remove"
-                            method="POST"
-                            style="display: inline"
-                        >
-                            <input
-                                type="hidden"
-                                name="character_id"
-                                value="{{$.Character.ID}}"
-                            />
-                            <input
-                                type="hidden"
-                                name="item_id"
-                                value="{{.ID}}"
-                            />
-                            <button type="submit" class="remove-button">
-                                Remove
-                            </button>
+                        {{if or (eq .ItemType "weapon") (eq .ItemType "armor") (eq .ItemType "shield") (eq .ItemType
+                        "ranged_weapon")}}
+                        <div class="dropdown">
+                            <button class="button dropdown-toggle">Equip</button>
+                            <div class="dropdown-content">
+                                <form action="/characters/inventory/equip" method="POST">
+                                    <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                                    <input type="hidden" name="item_id" value="{{.ID}}">
+                                    <select name="equipment_slot_id" required>
+                                        <option value="">-- Select Slot --</option>
+                                        {{if or (eq .ItemType "weapon") (eq .ItemType "ranged_weapon")}}
+                                        <option value="5">Right Hand</option>
+                                        <option value="6">Left Hand</option>
+                                        {{else if eq .ItemType "armor"}}
+                                        <option value="3">Body</option>
+                                        {{else if eq .ItemType "shield"}}
+                                        <option value="6">Left Hand</option>
+                                        {{end}}
+                                    </select>
+                                    <button type="submit" class="button small">Equip</button>
+                                </form>
+                            </div>
+                        </div>
+                        {{end}}
+
+                        {{if .ContainerOptions}}
+                        <div class="dropdown">
+                            <button class="button dropdown-toggle">Store</button>
+                            <div class="dropdown-content">
+                                <form action="/characters/inventory/move" method="POST">
+                                    <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                                    <input type="hidden" name="item_id" value="{{.ID}}">
+                                    <select name="container_id" required>
+                                        <option value="">-- Select Container --</option>
+                                        {{range .ContainerOptions}}
+                                        <option value="{{.ID}}">{{.ItemName}}</option>
+                                        {{end}}
+                                    </select>
+                                    <button type="submit" class="button small">Store</button>
+                                </form>
+                            </div>
+                        </div>
+                        {{end}}
+
+                        <form action="/characters/inventory/remove" method="POST" style="display: inline">
+                            <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                            <input type="hidden" name="item_id" value="{{.ID}}">
+                            <button type="submit" class="delete-button">Remove</button>
                         </form>
                     </td>
                 </tr>
                 {{end}}
             </tbody>
         </table>
+        {{else}}
+        <p class="empty-message">No carried items</p>
+        {{end}}
     </div>
-    {{end}}
 
     <!-- Container Items -->
-    {{range .Character.CarriedItems}} {{if eq .ItemType "container"}} {{template
-    "container" .}} {{end}} {{end}}
+    {{range .Character.CarriedItems}}
+    {{if eq .ItemType "container"}}
+    <div class="container-section stat-block" id="container-{{.ID}}">
+        <h3>{{.ItemName}} <span class="container-capacity">({{.ID}})</span></h3>
+
+        <div class="container-stats">
+            <p>
+                <strong>Current Weight:</strong>
+                {{$totalWeight := 0}}
+                {{range $item := index $.Character.ContainerItems .ID}}
+                {{$totalWeight = add $totalWeight (mul $item.ItemWeight $item.Quantity)}}
+                {{end}}
+                {{$totalWeight}} lbs
+            </p>
+            <div class="container-actions">
+                <a href="/characters/inventory/add?character_id={{$.Character.ID}}&container_id={{.ID}}"
+                    class="button">Add Item</a>
+            </div>
+        </div>
+
+        {{$items := index $.Character.ContainerItems .ID}}
+        {{if $items}}
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Weight</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $items}}
+                <tr>
+                    <td>{{.ItemName}}</td>
+                    <td>{{.ItemType}}</td>
+                    <td>{{.Quantity}}</td>
+                    <td>{{.ItemWeight}} lbs</td>
+                    <td>
+                        {{if or (eq .ItemType "weapon") (eq .ItemType "armor") (eq .ItemType "shield") (eq .ItemType
+                        "ranged_weapon")}}
+                        <div class="dropdown">
+                            <button class="button dropdown-toggle">Equip</button>
+                            <div class="dropdown-content">
+                                <form action="/characters/inventory/equip" method="POST">
+                                    <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                                    <input type="hidden" name="item_id" value="{{.ID}}">
+                                    <select name="equipment_slot_id" required>
+                                        <option value="">-- Select Slot --</option>
+                                        {{if or (eq .ItemType "weapon") (eq .ItemType "ranged_weapon")}}
+                                        <option value="5">Right Hand</option>
+                                        <option value="6">Left Hand</option>
+                                        {{else if eq .ItemType "armor"}}
+                                        <option value="3">Body</option>
+                                        {{else if eq .ItemType "shield"}}
+                                        <option value="6">Left Hand</option>
+                                        {{end}}
+                                    </select>
+                                    <button type="submit" class="button small">Equip</button>
+                                </form>
+                            </div>
+                        </div>
+                        {{end}}
+
+                        <form action="/characters/inventory/move" method="POST" style="display: inline">
+                            <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                            <input type="hidden" name="item_id" value="{{.ID}}">
+                            <input type="hidden" name="container_id" value="">
+                            <button type="submit" class="button">Remove from container</button>
+                        </form>
+
+                        <form action="/characters/inventory/remove" method="POST" style="display: inline">
+                            <input type="hidden" name="character_id" value="{{$.Character.ID}}">
+                            <input type="hidden" name="item_id" value="{{.ID}}">
+                            <button type="submit" class="delete-button">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-message">Container is empty</p>
+        {{end}}
+    </div>
+    {{end}}
+    {{end}}
 </div>
+
+<style>
+    .inventory-section {
+        margin: 2rem 0;
+    }
+
+    .stat-block {
+        background-color: rgba(237, 242, 244, 0.05);
+        border-radius: 5px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .inventory-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .inventory-table th,
+    .inventory-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(237, 242, 244, 0.1);
+    }
+
+    .inventory-table th {
+        background-color: rgba(43, 45, 66, 0.3);
+    }
+
+    .item-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: var(--color-SpaceCadet);
+        min-width: 250px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        z-index: 1;
+        padding: 0.75rem;
+        border-radius: 5px;
+    }
+
+    .dropdown:hover .dropdown-content {
+        display: block;
+    }
+
+    .dropdown select {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .button.small {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .empty-message {
+        padding: 0.5rem;
+        color: #aaa;
+        font-style: italic;
+    }
+
+    .container-capacity {
+        font-size: 0.85rem;
+        color: #aaa;
+    }
+
+    .encumbrance-status {
+        padding: 0.5rem;
+        border-radius: 3px;
+        margin: 0.5rem 0;
+    }
+
+    .encumbrance-status.None {
+        background-color: rgba(76, 175, 80, 0.1);
+    }
+
+    .encumbrance-status.Encumbered {
+        background-color: rgba(255, 152, 0, 0.1);
+    }
+
+    .encumbrance-status.Heavy {
+        background-color: rgba(255, 87, 34, 0.1);
+    }
+
+    .encumbrance-status.Over {
+        background-color: rgba(244, 67, 54, 0.1);
+    }
+
+    .notes {
+        font-size: 0.85rem;
+        font-style: italic;
+        margin-top: 0.25rem;
+    }
+</style>
 {{end}}

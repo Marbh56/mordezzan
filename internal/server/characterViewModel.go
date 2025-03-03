@@ -41,28 +41,29 @@ func interfaceToNullInt64(v interface{}) sql.NullInt64 {
 
 // Represents a single item in a character's inventory
 type InventoryItem struct {
-	ID              int64          `json:"id"`
-	CharacterID     int64          `json:"character_id"`
-	ItemType        string         `json:"item_type"`
-	ItemID          int64          `json:"item_id"`
-	ItemName        string         `json:"item_name"`
-	ItemWeight      int            `json:"item_weight"`
-	Quantity        int64          `json:"quantity"`
-	ContainerID     sql.NullInt64  `json:"container_id"` // Changed from ContainerInventoryID for consistency
-	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
-	SlotName        sql.NullString `json:"slot_name"`
-	CustomName      sql.NullString `json:"custom_name"`   // New field
-	CustomNotes     sql.NullString `json:"custom_notes"`  // New field
-	IsIdentified    bool           `json:"is_identified"` // New field
-	Charges         sql.NullInt64  `json:"charges"`       // New field
-	Condition       string         `json:"condition"`     // New field
-	Damage          sql.NullString `json:"damage"`
-	AttacksPerRound sql.NullString `json:"attacks_per_round"`
-	MovementRate    sql.NullInt64  `json:"movement_rate"`
-	DefenseBonus    interface{}    `json:"defense_bonus"`
-	Notes           sql.NullString `json:"notes"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID               int64           `json:"id"`
+	CharacterID      int64           `json:"character_id"`
+	ItemType         string          `json:"item_type"`
+	ItemID           int64           `json:"item_id"`
+	ItemName         string          `json:"item_name"`
+	ItemWeight       int             `json:"item_weight"`
+	Quantity         int64           `json:"quantity"`
+	ContainerID      sql.NullInt64   `json:"container_id"` // Changed from ContainerInventoryID for consistency
+	EquipmentSlotID  sql.NullInt64   `json:"equipment_slot_id"`
+	SlotName         sql.NullString  `json:"slot_name"`
+	CustomName       sql.NullString  `json:"custom_name"`   // New field
+	CustomNotes      sql.NullString  `json:"custom_notes"`  // New field
+	IsIdentified     bool            `json:"is_identified"` // New field
+	Charges          sql.NullInt64   `json:"charges"`       // New field
+	Condition        string          `json:"condition"`     // New field
+	Damage           sql.NullString  `json:"damage"`
+	AttacksPerRound  sql.NullString  `json:"attacks_per_round"`
+	MovementRate     sql.NullInt64   `json:"movement_rate"`
+	DefenseBonus     interface{}     `json:"defense_bonus"`
+	Notes            sql.NullString  `json:"notes"`
+	ContainerOptions []InventoryItem `json:"container_options,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
 }
 
 // Contains inventory statistics and calculated values

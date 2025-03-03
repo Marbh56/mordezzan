@@ -1618,3 +1618,5 @@ func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("Maximum HP changed by %+d", maxHPChange)
 	renderHPSection(w, updatedCharacter, message)
 }
+
+

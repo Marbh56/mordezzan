@@ -10,6 +10,7 @@ import (
 
 	"github.com/marbh56/mordezzan/internal/db"
 	"github.com/marbh56/mordezzan/internal/logger"
+	charRules "github.com/marbh56/mordezzan/internal/rules/character"
 	"go.uber.org/zap"
 )
 
@@ -821,4 +822,236 @@ func handleAddItemSubmission(s *Server, w http.ResponseWriter, r *http.Request, 
 		zap.String("item_type", itemType))
 
 	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Item added successfully", character.ID), http.StatusSeeOther)
+}
+
+// PrepareContainerOptionsForItems adds container options to inventory items
+func PrepareContainerOptionsForItems(items []InventoryItem, containers []InventoryItem) []InventoryItem {
+	for i := range items {
+		// Create container options for all items (they can all be stored)
+		var containerOptions []InventoryItem
+		for _, container := range containers {
+			// Skip itself as a container option
+			if container.ID != items[i].ID {
+				containerOptions = append(containerOptions, container)
+			}
+		}
+		items[i].ContainerOptions = containerOptions
+	}
+	return items
+}
+
+// EnhanceInventoryViewModel enhances the character view model with container options
+func EnhanceInventoryViewModel(viewModel *CharacterViewModel) {
+	// Find all containers
+	var containers []InventoryItem
+	for _, item := range viewModel.CarriedItems {
+		if item.ItemType == "container" {
+			containers = append(containers, item)
+		}
+	}
+
+	// Add container options to carried items
+	viewModel.CarriedItems = PrepareContainerOptionsForItems(viewModel.CarriedItems, containers)
+
+	// Add container options to each container's items
+	for containerID, containerItems := range viewModel.ContainerItems {
+		// Get all containers except the current one
+		var validContainers []InventoryItem
+		for _, container := range containers {
+			if container.ID != containerID {
+				validContainers = append(validContainers, container)
+			}
+		}
+		viewModel.ContainerItems[containerID] = PrepareContainerOptionsForItems(containerItems, validContainers)
+	}
+}
+
+// Helper function to get available equipment slots for an item
+func getAvailableSlotsForItem(itemType string) []db.EquipmentSlot {
+	// This would be better as a database query, but for now we'll hardcode
+	slots := make([]db.EquipmentSlot, 0)
+
+	switch itemType {
+	case "weapon", "ranged_weapon":
+		slots = append(slots, db.EquipmentSlot{ID: 5, Name: "Right Hand"})
+		slots = append(slots, db.EquipmentSlot{ID: 6, Name: "Left Hand"})
+	case "armor":
+		slots = append(slots, db.EquipmentSlot{ID: 3, Name: "Body"})
+	case "shield":
+		slots = append(slots, db.EquipmentSlot{ID: 6, Name: "Left Hand"})
+	case "headgear":
+		slots = append(slots, db.EquipmentSlot{ID: 1, Name: "Head"})
+	default:
+		// Add other slot mappings as needed
+	}
+
+	return slots
+}
+
+func (s *Server) renderCharacterDetail(w http.ResponseWriter, r *http.Request, user *db.GetSessionRow, character db.Character, viewModel CharacterViewModel) error {
+	funcMap := template.FuncMap{
+		"seq": func(start, end int) []int {
+			s := make([]int, end-start+1)
+			for i := range s {
+				s[i] = start + i
+			}
+			return s
+		},
+		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
+		"add": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v + int64(w)
+				case int64:
+					return v + w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) + w
+				case int:
+					return int64(v + w)
+				}
+			}
+			return 0
+		},
+		"mul": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v * int64(w)
+				case int64:
+					return v * w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) * w
+				case int:
+					return int64(v * w)
+				}
+			}
+			return 0
+		},
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"sub": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v - int64(w)
+				case int64:
+					return v - w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) - w
+				case int:
+					return int64(v - w)
+				}
+			}
+			return 0
+		},
+		"abs": func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		},
+		"formatDateTime": func(t time.Time) string {
+			return t.Format("January 2, 2006 3:04 PM")
+		},
+		"eq": func(a, b interface{}) bool {
+			return a == b
+		},
+		"formatModifier": func(mod int) string {
+			if mod > 0 {
+				return "+" + strconv.Itoa(mod)
+			}
+			return strconv.Itoa(mod)
+		},
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+		"contains": containsString,
+	}
+
+	// Parse templates
+	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
+		"templates/layout/base.html",
+		"templates/characters/details.html",
+		"templates/characters/_inventory.html",
+		"templates/characters/_ability_scores.html",
+		"templates/characters/_class_features.html",
+		"templates/characters/_combat_stats.html",
+		"templates/characters/_saving_throws.html",
+		"templates/characters/_character_header.html",
+		"templates/characters/_currency_management.html",
+		"templates/characters/_hp_display.html",
+		"templates/characters/_hp_section.html",
+		"templates/characters/_currency_section.html",
+	)
+
+	if err != nil {
+		logger.Error("Template parsing error", zap.Error(err))
+		return err
+	}
+
+	data := struct {
+		IsAuthenticated bool
+		Username        string
+		Character       CharacterViewModel
+		FlashMessage    string
+		CurrentYear     int
+	}{
+		IsAuthenticated: true,
+		Username:        user.Username,
+		Character:       viewModel,
+		FlashMessage:    r.URL.Query().Get("message"),
+		CurrentYear:     time.Now().Year(),
+	}
+
+	// Add a special message if we had inventory issues but are still rendering
+	if count, err := getCharacterInventoryCount(s.db, character.ID); err == nil && count > 0 && len(viewModel.CarriedItems) == 0 {
+		data.FlashMessage = "There was an issue loading some inventory items. Please contact support if this persists."
+	}
+
+	err = tmpl.ExecuteTemplate(w, "base.html", data)
+	if err != nil {
+		logger.Error("Template execution error", zap.Error(err))
+		return err
+	}
+
+	logger.Info("Character detail rendered successfully",
+		zap.Int64("character_id", character.ID),
+		zap.Int64("user_id", user.UserID))
+
+	return nil
+}
+
+// Helper function to get inventory count for a character
+func getCharacterInventoryCount(db *sql.DB, characterID int64) (int, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM character_inventory WHERE character_id = ?", characterID).Scan(&count)
+	return count, err
 }
