@@ -2,7 +2,7 @@
 <div class="inventory-section">
     <div class="inventory-header">
         <h2>Inventory and Equipment</h2>
-        <a href="/characters/inventory/add?character_id={{.Character.ID}}" class="button primary">Add Item</a>
+        <button class="button primary open-inventory-modal" data-character-id="{{.Character.ID}}">Add Item</button>
     </div>
 
     <!-- Encumbrance Information -->
@@ -169,8 +169,8 @@
                 {{$totalWeight}} lbs
             </p>
             <div class="container-actions">
-                <a href="/characters/inventory/add?character_id={{$.Character.ID}}&container_id={{.ID}}"
-                    class="button">Add Item</a>
+                <button class="button open-inventory-modal" data-character-id="{{$.Character.ID}}"
+                    data-container-id="{{.ID}}">Add Item</button>
             </div>
         </div>
 

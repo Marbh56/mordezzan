@@ -1,5 +1,5 @@
 {{define "content"}}
-<div class="character-sheet">
+<div id="character-sheet-container" class="character-sheet">
     {{template "character_header" .}}
     {{template "combat_stats" .}}
 
@@ -11,5 +11,22 @@
     {{template "saving_throws" .}}
     {{template "class_features" .}}
     {{template "inventory" .}}
+
+    <!-- Include modal template -->
+    {{template "inventory_modal" dict "CharacterID" .Character.ID}}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle the HX-Trigger for modal closed event
+        document.body.addEventListener('htmx:afterOnLoad', function (evt) {
+            if (evt.detail.triggerSpec && evt.detail.triggerSpec.modalClosed) {
+                const modal = document.getElementById('inventory-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        });
+    });
+</script>
 {{end}}

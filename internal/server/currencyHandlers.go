@@ -138,7 +138,7 @@ func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
 		zap.Int64("change", amount))
 
 	// Fetch inventory for coin weight calculation
-	inventory, err := queries.GetCharacterInventory(r.Context(), characterID)
+	inventory, err := queries.GetCharacterInventoryItems(r.Context(), characterID)
 	if err != nil {
 		logger.Warn("Failed to fetch inventory for coin weight",
 			zap.Error(err),

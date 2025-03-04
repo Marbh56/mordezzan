@@ -174,7 +174,7 @@ func interfaceToInt(v interface{}) int {
 }
 
 // Creates a new character view model with inventory data
-func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryRow) CharacterViewModel {
+func NewCharacterViewModel(c db.Character, inventory []db.GetCharacterInventoryItemsRow) CharacterViewModel {
 	vm := CharacterViewModel{
 		ID:               c.ID,
 		UserID:           c.UserID,

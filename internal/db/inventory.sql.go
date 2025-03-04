@@ -438,7 +438,7 @@ func (q *Queries) GetAllWeapons(ctx context.Context) ([]GetAllWeaponsRow, error)
 	return items, nil
 }
 
-const getCharacterInventory = `-- name: GetCharacterInventory :many
+const getCharacterInventoryItems = `-- name: GetCharacterInventoryItems :many
 SELECT 
     ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
     ci.container_id, ci.equipment_slot_id, ci.notes,
@@ -448,7 +448,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.name
         WHEN ci.item_type = 'armor' THEN a.name
         WHEN ci.item_type = 'ammunition' THEN am.name
-        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'container' THEN e.name  -- Use equipment name as fallback
         WHEN ci.item_type = 'shield' THEN s.name
         WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
@@ -457,7 +457,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.weight
         WHEN ci.item_type = 'armor' THEN a.weight
         WHEN ci.item_type = 'ammunition' THEN am.weight
-        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'container' THEN e.weight  -- Use equipment weight as fallback
         WHEN ci.item_type = 'shield' THEN s.weight
         WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
@@ -508,7 +508,7 @@ ORDER BY
     item_name
 `
 
-type GetCharacterInventoryRow struct {
+type GetCharacterInventoryItemsRow struct {
 	ID                int64          `json:"id"`
 	CharacterID       int64          `json:"character_id"`
 	ItemID            int64          `json:"item_id"`
@@ -530,15 +530,15 @@ type GetCharacterInventoryRow struct {
 	ContainerMaxItems interface{}    `json:"container_max_items"`
 }
 
-func (q *Queries) GetCharacterInventory(ctx context.Context, characterID int64) ([]GetCharacterInventoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, getCharacterInventory, characterID)
+func (q *Queries) GetCharacterInventoryItems(ctx context.Context, characterID int64) ([]GetCharacterInventoryItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCharacterInventoryItems, characterID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetCharacterInventoryRow
+	var items []GetCharacterInventoryItemsRow
 	for rows.Next() {
-		var i GetCharacterInventoryRow
+		var i GetCharacterInventoryItemsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CharacterID,
@@ -608,7 +608,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.name
         WHEN ci.item_type = 'armor' THEN a.name
         WHEN ci.item_type = 'ammunition' THEN am.name
-        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'container' THEN e.name  -- Use equipment name as fallback
         WHEN ci.item_type = 'shield' THEN s.name
         WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
@@ -617,7 +617,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.weight
         WHEN ci.item_type = 'armor' THEN a.weight
         WHEN ci.item_type = 'ammunition' THEN am.weight
-        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'container' THEN e.weight  -- Use equipment weight as fallback
         WHEN ci.item_type = 'shield' THEN s.weight
         WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
@@ -702,7 +702,7 @@ SELECT
             WHEN ci.item_type = 'weapon' THEN w.weight * ci.quantity
             WHEN ci.item_type = 'armor' THEN a.weight * ci.quantity
             WHEN ci.item_type = 'ammunition' THEN COALESCE(am.weight, 0) * ci.quantity
-            WHEN ci.item_type = 'container' THEN COALESCE(c.weight, 0) * ci.quantity
+            WHEN ci.item_type = 'container' THEN COALESCE(e.weight, 0) * ci.quantity  -- Use equipment weight as fallback
             WHEN ci.item_type = 'shield' THEN s.weight * ci.quantity
             WHEN ci.item_type = 'ranged_weapon' THEN rw.weight * ci.quantity
             ELSE 0

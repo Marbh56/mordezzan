@@ -1,4 +1,4 @@
--- name: GetCharacterInventory :many
+-- name: GetCharacterInventoryItems :many
 SELECT 
     ci.id, ci.character_id, ci.item_id, ci.item_type, ci.quantity,
     ci.container_id, ci.equipment_slot_id, ci.notes,
@@ -8,7 +8,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.name
         WHEN ci.item_type = 'armor' THEN a.name
         WHEN ci.item_type = 'ammunition' THEN am.name
-        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'container' THEN e.name  -- Use equipment name as fallback
         WHEN ci.item_type = 'shield' THEN s.name
         WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
@@ -17,7 +17,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.weight
         WHEN ci.item_type = 'armor' THEN a.weight
         WHEN ci.item_type = 'ammunition' THEN am.weight
-        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'container' THEN e.weight  -- Use equipment weight as fallback
         WHEN ci.item_type = 'shield' THEN s.weight
         WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
@@ -77,7 +77,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.name
         WHEN ci.item_type = 'armor' THEN a.name
         WHEN ci.item_type = 'ammunition' THEN am.name
-        WHEN ci.item_type = 'container' THEN c.name
+        WHEN ci.item_type = 'container' THEN e.name  -- Use equipment name as fallback
         WHEN ci.item_type = 'shield' THEN s.name
         WHEN ci.item_type = 'ranged_weapon' THEN rw.name
     END as item_name,
@@ -86,7 +86,7 @@ SELECT
         WHEN ci.item_type = 'weapon' THEN w.weight
         WHEN ci.item_type = 'armor' THEN a.weight
         WHEN ci.item_type = 'ammunition' THEN am.weight
-        WHEN ci.item_type = 'container' THEN c.weight
+        WHEN ci.item_type = 'container' THEN e.weight  -- Use equipment weight as fallback
         WHEN ci.item_type = 'shield' THEN s.weight
         WHEN ci.item_type = 'ranged_weapon' THEN rw.weight
         ELSE 0
@@ -105,6 +105,32 @@ WHERE
     AND ci.character_id = ?
 ORDER BY 
     item_name;
+
+-- name: GetContainerWeight :one
+SELECT 
+    COALESCE(SUM(
+        CASE 
+            WHEN ci.item_type = 'equipment' THEN e.weight * ci.quantity
+            WHEN ci.item_type = 'weapon' THEN w.weight * ci.quantity
+            WHEN ci.item_type = 'armor' THEN a.weight * ci.quantity
+            WHEN ci.item_type = 'ammunition' THEN COALESCE(am.weight, 0) * ci.quantity
+            WHEN ci.item_type = 'container' THEN COALESCE(e.weight, 0) * ci.quantity  -- Use equipment weight as fallback
+            WHEN ci.item_type = 'shield' THEN s.weight * ci.quantity
+            WHEN ci.item_type = 'ranged_weapon' THEN rw.weight * ci.quantity
+            ELSE 0
+        END
+    ), 0) as total_weight
+FROM 
+    character_inventory ci
+    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
+    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
+    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
+    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
+    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
+    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
+    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
+WHERE 
+    ci.container_id = ?;
 
 -- name: GetContainerCapacity :one
 SELECT 
@@ -193,33 +219,7 @@ SET
 WHERE 
     id = ?
     AND character_id = ?;
-
--- name: GetContainerWeight :one
-SELECT 
-    COALESCE(SUM(
-        CASE 
-            WHEN ci.item_type = 'equipment' THEN e.weight * ci.quantity
-            WHEN ci.item_type = 'weapon' THEN w.weight * ci.quantity
-            WHEN ci.item_type = 'armor' THEN a.weight * ci.quantity
-            WHEN ci.item_type = 'ammunition' THEN COALESCE(am.weight, 0) * ci.quantity
-            WHEN ci.item_type = 'container' THEN COALESCE(c.weight, 0) * ci.quantity
-            WHEN ci.item_type = 'shield' THEN s.weight * ci.quantity
-            WHEN ci.item_type = 'ranged_weapon' THEN rw.weight * ci.quantity
-            ELSE 0
-        END
-    ), 0) as total_weight
-FROM 
-    character_inventory ci
-    LEFT JOIN equipment e ON ci.item_type = 'equipment' AND ci.item_id = e.id
-    LEFT JOIN weapons w ON ci.item_type = 'weapon' AND ci.item_id = w.id
-    LEFT JOIN armor a ON ci.item_type = 'armor' AND ci.item_id = a.id
-    LEFT JOIN ammunition am ON ci.item_type = 'ammunition' AND ci.item_id = am.id
-    LEFT JOIN containers c ON ci.item_type = 'container' AND ci.item_id = c.id
-    LEFT JOIN shields s ON ci.item_type = 'shield' AND ci.item_id = s.id
-    LEFT JOIN ranged_weapons rw ON ci.item_type = 'ranged_weapon' AND ci.item_id = rw.id
-WHERE 
-    ci.container_id = ?;
-
+    
 -- name: UpdateItemQuantity :exec
 UPDATE character_inventory
 SET 

@@ -1,0 +1,83 @@
+{{define "inventory_modal"}}
+<div id="inventory-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add Item to Inventory</h2>
+
+        <div id="add-item-form-container" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
+            hx-trigger="load" hx-swap="innerHTML">
+            <div class="loading-spinner">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Place this script at the end of the template -->
+<script>
+    // This function will be called on page load and after HTMX swaps
+    function initializeInventoryModal() {
+        const modal = document.getElementById('inventory-modal');
+        const addButtons = document.querySelectorAll('.open-inventory-modal');
+        const closeButtons = document.querySelectorAll('.close, .close-modal');
+
+        if (!modal) return; // Exit if modal doesn't exist on the page
+
+        // Remove existing event listeners to prevent duplicates
+        addButtons.forEach(button => {
+            button.replaceWith(button.cloneNode(true));
+        });
+
+        closeButtons.forEach(button => {
+            button.replaceWith(button.cloneNode(true));
+        });
+
+        // Get fresh references after replacing
+        const newAddButtons = document.querySelectorAll('.open-inventory-modal');
+        const newCloseButtons = document.querySelectorAll('.close, .close-modal');
+
+        // Add event listeners to open modal
+        newAddButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const characterId = this.getAttribute('data-character-id');
+                const containerId = this.getAttribute('data-container-id');
+
+                let url = `/characters/inventory/modal?character_id=${characterId}`;
+                if (containerId) {
+                    url += `&container_id=${containerId}`;
+                }
+
+                // Load form content
+                htmx.ajax('GET', url, '#add-item-form-container');
+
+                // Show modal
+                modal.style.display = 'block';
+            });
+        });
+
+        // Add event listeners to close modal
+        newCloseButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                modal.style.display = 'none';
+            });
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', initializeInventoryModal);
+
+    // Re-initialize after htmx content swaps
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        if (event.detail.target.id === 'character-sheet-container' ||
+            event.detail.target.id === 'add-item-form-container') {
+            initializeInventoryModal();
+        }
+    });
+</script>
+{{end}}
