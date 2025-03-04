@@ -728,6 +728,190 @@ func (q *Queries) GetContainerWeight(ctx context.Context, containerID sql.NullIn
 	return total_weight, err
 }
 
+const getEnhancedArmor = `-- name: GetEnhancedArmor :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    armor
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name
+`
+
+type GetEnhancedArmorRow struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Weight int64  `json:"weight"`
+	CostGp int64  `json:"cost_gp"`
+}
+
+func (q *Queries) GetEnhancedArmor(ctx context.Context, enhancementBonus sql.NullInt64) ([]GetEnhancedArmorRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEnhancedArmor, enhancementBonus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEnhancedArmorRow
+	for rows.Next() {
+		var i GetEnhancedArmorRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Weight,
+			&i.CostGp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEnhancedRangedWeapons = `-- name: GetEnhancedRangedWeapons :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    ranged_weapons
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name
+`
+
+type GetEnhancedRangedWeaponsRow struct {
+	ID     int64         `json:"id"`
+	Name   string        `json:"name"`
+	Weight int64         `json:"weight"`
+	CostGp sql.NullInt64 `json:"cost_gp"`
+}
+
+func (q *Queries) GetEnhancedRangedWeapons(ctx context.Context, enhancementBonus sql.NullInt64) ([]GetEnhancedRangedWeaponsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEnhancedRangedWeapons, enhancementBonus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEnhancedRangedWeaponsRow
+	for rows.Next() {
+		var i GetEnhancedRangedWeaponsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Weight,
+			&i.CostGp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEnhancedShields = `-- name: GetEnhancedShields :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    shields
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name
+`
+
+type GetEnhancedShieldsRow struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Weight int64  `json:"weight"`
+	CostGp int64  `json:"cost_gp"`
+}
+
+func (q *Queries) GetEnhancedShields(ctx context.Context, enhancementBonus sql.NullInt64) ([]GetEnhancedShieldsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEnhancedShields, enhancementBonus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEnhancedShieldsRow
+	for rows.Next() {
+		var i GetEnhancedShieldsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Weight,
+			&i.CostGp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getEnhancedWeapons = `-- name: GetEnhancedWeapons :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    weapons
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name
+`
+
+type GetEnhancedWeaponsRow struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Weight int64  `json:"weight"`
+	CostGp int64  `json:"cost_gp"`
+}
+
+func (q *Queries) GetEnhancedWeapons(ctx context.Context, enhancementBonus sql.NullInt64) ([]GetEnhancedWeaponsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getEnhancedWeapons, enhancementBonus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEnhancedWeaponsRow
+	for rows.Next() {
+		var i GetEnhancedWeaponsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Weight,
+			&i.CostGp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEquipmentSlots = `-- name: GetEquipmentSlots :many
 SELECT 
     id, name, description

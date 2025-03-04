@@ -16,7 +16,6 @@
                 <option value="">-- Select Type --</option>
                 <option value="equipment">Equipment</option>
                 <option value="weapon">Weapon</option>
-                <option value="magical_weapon">Magical Weapon</option>
                 <option value="armor">Armor</option>
                 <option value="ammunition">Ammunition</option>
                 <option value="container">Container</option>
@@ -30,22 +29,45 @@
         </div>
     </form>
 
+    {{else if or (eq .SelectedType "weapon") (eq .SelectedType "armor") (eq .SelectedType "shield") (eq .SelectedType
+    "ranged_weapon")}}
+
+    {{/* Enhancement Selection Step */}}
+    {{if not .Enhancement}}
+    <form action="/characters/inventory/add" method="GET">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}" />
+        <input type="hidden" name="type" value="{{.SelectedType}}" />
+
+        <div class="form-group">
+            <label for="enhancement">Enhancement Bonus:</label>
+            <select name="enhancement" id="enhancement" required>
+                <option value="0">No Enhancement (+0)</option>
+                <option value="1">Enhanced (+1)</option>
+                <option value="2">Enhanced (+2)</option>
+                <option value="3">Enhanced (+3)</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="button primary">Next</button>
+            <a href="/characters/inventory/add?character_id={{.CharacterID}}" class="button">Back</a>
+            <a href="/characters/detail?id={{.CharacterID}}" class="button">Cancel</a>
+        </div>
+    </form>
+
     {{else}}
+    {{/* Item Selection Step */}}
     <form action="/characters/inventory/add" method="POST">
         <input type="hidden" name="character_id" value="{{.CharacterID}}" />
         <input type="hidden" name="item_type" value="{{.SelectedType}}" />
 
         <div class="form-group">
             <label for="item_id">Select Item:</label>
-            <select name="{{if eq .SelectedType "magical_weapon"}}magical_weapon_id{{else}}item_id{{end}}" id="item_id" required>
+            <select name="item_id" id="item_id" required>
                 <option value="">-- Select Item --</option>
                 {{range .Items}}
                 <option value="{{.ID}}">
-                    {{if eq $.SelectedType "magical_weapon"}}
-                        {{.BaseWeaponName}} +{{.EnhancementBonus}} ({{.Cost}} gp)
-                    {{else}}
-                        {{.Name}} ({{.Weight}} lbs - {{.Cost}} gp)
-                    {{end}}
+                    {{.Name}} ({{.Weight}} lbs - {{.CostGp}} gp)
                 </option>
                 {{end}}
             </select>
@@ -58,8 +80,8 @@
 
         {{if .Containers}}
         <div class="form-group">
-            <label for="container_inventory_id">Store in Container (optional):</label>
-            <select name="container_inventory_id" id="container_inventory_id">
+            <label for="container_id">Store in Container (optional):</label>
+            <select name="container_id" id="container_id">
                 <option value="">-- None --</option>
                 {{range .Containers}}
                 <option value="{{.ID}}">{{.ItemName}}</option>
@@ -87,10 +109,129 @@
 
         <div class="form-actions">
             <button type="submit" class="button primary">Add Item</button>
+            <a href="/characters/inventory/add?character_id={{.CharacterID}}&type={{.SelectedType}}"
+                class="button">Back</a>
+            <a href="/characters/detail?id={{.CharacterID}}" class="button">Cancel</a>
+        </div>
+    </form>
+    {{end}}
+
+    {{else}}
+    {{/* Equipment, Ammunition, etc. (unchanged) */}}
+    <form action="/characters/inventory/add" method="POST">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}" />
+        <input type="hidden" name="item_type" value="{{.SelectedType}}" />
+
+        <div class="form-group">
+            <label for="item_id">Select Item:</label>
+            <select name="item_id" id="item_id" required>
+                <option value="">-- Select Item --</option>
+                {{range .Items}}
+                <option value="{{.ID}}">
+                    {{.Name}} ({{.Weight}} lbs - {{.CostGp}} gp)
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="quantity">Quantity:</label>
+            <input type="number" name="quantity" id="quantity" value="1" min="1" required />
+        </div>
+
+        {{if .Containers}}
+        <div class="form-group">
+            <label for="container_id">Store in Container (optional):</label>
+            <select name="container_id" id="container_id">
+                <option value="">-- None --</option>
+                {{range .Containers}}
+                <option value="{{.ID}}">{{.ItemName}}</option>
+                {{end}}
+            </select>
+        </div>
+        {{end}}
+
+        <div class="form-group">
+            <label for="notes">Notes (optional):</label>
+            <textarea name="notes" id="notes" rows="3"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="button primary">Add Item</button>
             <a href="/characters/inventory/add?character_id={{.CharacterID}}" class="button">Back</a>
             <a href="/characters/detail?id={{.CharacterID}}" class="button">Cancel</a>
         </div>
     </form>
     {{end}}
 </div>
+{{end}}
+
+{{/* Update to templates/characters/inventory_modal.html for enhancement selection */}}
+{{define "inventory_modal"}}
+<div id="inventory-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add Item to Inventory</h2>
+
+        <div id="add-item-form-container" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
+            hx-trigger="load" hx-swap="innerHTML">
+            <div class="loading-spinner">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Set up modal functionality
+        const modal = document.getElementById('inventory-modal');
+        const addButtons = document.querySelectorAll('.open-inventory-modal');
+        const closeButtons = document.querySelectorAll('.close, .close-modal');
+
+        // Open modal when "Add Item" buttons are clicked
+        addButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const characterId = this.getAttribute('data-character-id');
+                const containerId = this.getAttribute('data-container-id');
+
+                let url = `/characters/inventory/modal?character_id=${characterId}`;
+                if (containerId) {
+                    url += `&container_id=${containerId}`;
+                }
+
+                // Load form content
+                htmx.ajax('GET', url, '#add-item-form-container');
+
+                // Show modal
+                modal.style.display = 'block';
+            });
+        });
+
+        // Close modal when X or Cancel is clicked
+        closeButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                modal.style.display = 'none';
+            });
+        });
+
+        // Close modal when clicking outside of it
+        window.addEventListener('click', function (event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+
+    // Re-initialize modal controls after HTMX swaps content
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        const closeButtons = document.querySelectorAll('.close-modal');
+        const modal = document.getElementById('inventory-modal');
+
+        closeButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                modal.style.display = 'none';
+            });
+        });
+    });
+</script>
 {{end}}

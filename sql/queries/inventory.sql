@@ -381,3 +381,43 @@ FROM
     equipment_slots
 ORDER BY 
     name;
+
+-- name: GetEnhancedWeapons :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    weapons
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name;
+
+-- name: GetEnhancedArmor :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    armor
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name;
+
+-- name: GetEnhancedShields :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    shields
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name;
+
+-- name: GetEnhancedRangedWeapons :many
+SELECT 
+    id, name, weight, cost_gp
+FROM 
+    ranged_weapons
+WHERE
+    enhancement_bonus = ?
+ORDER BY 
+    name;

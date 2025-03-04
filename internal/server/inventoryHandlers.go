@@ -620,16 +620,33 @@ func (s *Server) HandleMoveToContainer(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, character db.Character, queries *db.Queries) {
-	// Get item type from query parameters (optional)
 	itemType := r.URL.Query().Get("type")
 
-	// Get container ID if adding to a container (optional)
-	containerIDStr := r.URL.Query().Get("container_id")
-	if containerIDStr != "" {
-		_, err := strconv.ParseInt(containerIDStr, 10, 64)
+	var containerID sql.NullInt64
+	if containerIDStr := r.URL.Query().Get("container_id"); containerIDStr != "" {
+		id, err := strconv.ParseInt(containerIDStr, 10, 64)
 		if err != nil {
 			// Log error but continue
-			logger.Warn("Invalid container ID", zap.String("raw_id", containerIDStr))
+			logger.Warn("Invalid container ID", zap.Error(err), zap.String("raw_id", containerIDStr))
+		} else {
+			containerID = sql.NullInt64{Int64: id, Valid: true}
+			// Add an explicit usage of containerID to appease the compiler
+			logger.Debug("Container ID parsed successfully",
+				zap.Int64("container_id", containerID.Int64),
+				zap.Bool("is_valid", containerID.Valid))
+		}
+	}
+
+	// Get enhancement query param with proper type conversion to int64
+	var enhancementBonus int64
+	if enhancementStr := r.URL.Query().Get("enhancement"); enhancementStr != "" {
+		var err error
+		enhancementBonus, err = strconv.ParseInt(enhancementStr, 10, 64)
+		if err != nil {
+			logger.Warn("Invalid enhancement bonus value",
+				zap.Error(err),
+				zap.String("raw_value", enhancementStr))
+			enhancementBonus = 0
 		}
 	}
 
@@ -671,11 +688,12 @@ func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, charac
 		CharacterID        int64
 		SelectedType       string
 		Items              interface{}
-		Containers         []db.GetCharacterInventoryItemsRow // This line needs to change
+		Containers         []db.GetCharacterInventoryItemsRow
 		EquipmentSlots     interface{}
 		ShowEquipmentSlots bool
 		FlashMessage       string
 		CurrentYear        int
+		Enhancement        int64 // Changed to int64
 	}{
 		IsAuthenticated:    ok,
 		Username:           username,
@@ -686,6 +704,7 @@ func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, charac
 		ShowEquipmentSlots: itemType == "weapon" || itemType == "armor" || itemType == "shield",
 		FlashMessage:       r.URL.Query().Get("message"),
 		CurrentYear:        time.Now().Year(),
+		Enhancement:        enhancementBonus,
 	}
 
 	// Filter containers from inventory
@@ -698,19 +717,56 @@ func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, charac
 	// If a type is selected, fetch available items of that type
 	if itemType != "" {
 		var err error
+
 		switch itemType {
 		case "weapon":
-			data.Items, err = queries.GetAllWeapons(r.Context())
+			if enhancementBonus > 0 {
+				// Fetch enhanced weapons with proper conversion to sql.NullInt64
+				data.Items, err = queries.GetEnhancedWeapons(r.Context(), sql.NullInt64{
+					Int64: enhancementBonus,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular weapons
+				data.Items, err = queries.GetAllWeapons(r.Context())
+			}
 		case "armor":
-			data.Items, err = queries.GetAllArmor(r.Context())
+			if enhancementBonus > 0 {
+				// Fetch enhanced armor with proper conversion to sql.NullInt64
+				data.Items, err = queries.GetEnhancedArmor(r.Context(), sql.NullInt64{
+					Int64: enhancementBonus,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular armor
+				data.Items, err = queries.GetAllArmor(r.Context())
+			}
 		case "shield":
-			data.Items, err = queries.GetAllShields(r.Context())
+			if enhancementBonus > 0 {
+				// Fetch enhanced shields with proper conversion to sql.NullInt64
+				data.Items, err = queries.GetEnhancedShields(r.Context(), sql.NullInt64{
+					Int64: enhancementBonus,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular shields
+				data.Items, err = queries.GetAllShields(r.Context())
+			}
+		case "ranged_weapon":
+			if enhancementBonus > 0 {
+				// Fetch enhanced ranged weapons with proper conversion to sql.NullInt64
+				data.Items, err = queries.GetEnhancedRangedWeapons(r.Context(), sql.NullInt64{
+					Int64: enhancementBonus,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular ranged weapons
+				data.Items, err = queries.GetAllRangedWeapons(r.Context())
+			}
 		case "equipment":
 			data.Items, err = queries.GetAllEquipment(r.Context())
 		case "ammunition":
 			data.Items, err = queries.GetAllAmmunition(r.Context())
-		case "ranged_weapon":
-			data.Items, err = queries.GetAllRangedWeapons(r.Context())
 		}
 
 		if err != nil {
@@ -920,16 +976,52 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 	// Get item type from query parameters (optional)
 	itemType := r.URL.Query().Get("type")
 
+	// Get enhancement bonus from query parameters (optional)
+	var enhancement int64
+	if enhancementStr := r.URL.Query().Get("enhancement"); enhancementStr != "" {
+		var err error
+		enhancement, err = strconv.ParseInt(enhancementStr, 10, 64)
+		if err != nil {
+			logger.Warn("Invalid enhancement bonus value",
+				zap.Error(err),
+				zap.String("raw_value", enhancementStr))
+			enhancement = 0
+		}
+	}
+
 	// Get container ID if adding to a container (optional)
-	containerIDStr := r.URL.Query().Get("container_id")
 	var containerID sql.NullInt64
-	if containerIDStr != "" {
+	if containerIDStr := r.URL.Query().Get("container_id"); containerIDStr != "" {
 		id, err := strconv.ParseInt(containerIDStr, 10, 64)
 		if err == nil {
 			containerID = sql.NullInt64{Int64: id, Valid: true}
 		} else {
 			logger.Warn("Invalid container ID", zap.String("raw_id", containerIDStr))
 		}
+	}
+
+	// If we have a type but no enhancement selection yet for applicable item types,
+	// and we're not on an enhancement selection step, show the enhancement selection form
+	var enhancementStr string = r.URL.Query().Get("enhancement")
+	if enhancementStr != "" {
+		var err error
+		enhancement, err = strconv.ParseInt(enhancementStr, 10, 64)
+		if err != nil {
+			logger.Warn("Invalid enhancement bonus value",
+				zap.Error(err),
+				zap.String("raw_value", enhancementStr))
+			enhancement = 0
+		}
+	}
+
+	// If we have a type but no enhancement selection yet for applicable item types,
+	// and we're not on an enhancement selection step, show the enhancement selection form
+	if itemType != "" &&
+		enhancementStr == "" &&
+		r.URL.Query().Get("step") != "enhancement" &&
+		(itemType == "weapon" || itemType == "armor" || itemType == "shield" || itemType == "ranged_weapon") {
+		renderEnhancementSelectionForm(w, characterID, itemType, containerID)
+		return
 	}
 
 	// Get available containers for the character
@@ -962,6 +1054,7 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		CharacterID        int64
 		SelectedType       string
+		Enhancement        int64
 		Items              interface{}
 		Containers         []db.GetCharacterInventoryItemsRow
 		EquipmentSlots     []db.EquipmentSlot
@@ -971,6 +1064,7 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 	}{
 		CharacterID:        characterID,
 		SelectedType:       itemType,
+		Enhancement:        enhancement,
 		Containers:         filteredContainers,
 		EquipmentSlots:     equipmentSlots,
 		ShowEquipmentSlots: itemType == "weapon" || itemType == "armor" || itemType == "shield" || itemType == "ranged_weapon",
@@ -979,21 +1073,59 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If a type is selected, fetch available items of that type
-	if itemType != "" {
+	if itemType != "" && (enhancementStr != "" ||
+		!(itemType == "weapon" || itemType == "armor" || itemType == "shield" || itemType == "ranged_weapon")) {
 		var err error
+
 		switch itemType {
 		case "weapon":
-			data.Items, err = queries.GetAllWeapons(r.Context())
+			if enhancement > 0 {
+				// Fetch enhanced weapons with proper sql.NullInt64
+				data.Items, err = queries.GetEnhancedWeapons(r.Context(), sql.NullInt64{
+					Int64: enhancement,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular weapons
+				data.Items, err = queries.GetAllWeapons(r.Context())
+			}
 		case "armor":
-			data.Items, err = queries.GetAllArmor(r.Context())
+			if enhancement > 0 {
+				// Fetch enhanced armor with proper sql.NullInt64
+				data.Items, err = queries.GetEnhancedArmor(r.Context(), sql.NullInt64{
+					Int64: enhancement,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular armor
+				data.Items, err = queries.GetAllArmor(r.Context())
+			}
 		case "shield":
-			data.Items, err = queries.GetAllShields(r.Context())
+			if enhancement > 0 {
+				// Fetch enhanced shields with proper sql.NullInt64
+				data.Items, err = queries.GetEnhancedShields(r.Context(), sql.NullInt64{
+					Int64: enhancement,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular shields
+				data.Items, err = queries.GetAllShields(r.Context())
+			}
+		case "ranged_weapon":
+			if enhancement > 0 {
+				// Fetch enhanced ranged weapons with proper sql.NullInt64
+				data.Items, err = queries.GetEnhancedRangedWeapons(r.Context(), sql.NullInt64{
+					Int64: enhancement,
+					Valid: true,
+				})
+			} else {
+				// Fetch regular ranged weapons
+				data.Items, err = queries.GetAllRangedWeapons(r.Context())
+			}
 		case "equipment":
 			data.Items, err = queries.GetAllEquipment(r.Context())
 		case "ammunition":
 			data.Items, err = queries.GetAllAmmunition(r.Context())
-		case "ranged_weapon":
-			data.Items, err = queries.GetAllRangedWeapons(r.Context())
 		}
 
 		if err != nil {
@@ -1005,98 +1137,129 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 
 	// Create a template function to render a partial template
 	tmpl, err := template.New("_modal").Parse(`
-	{{if not .SelectedType}}
-	<form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
-		<input type="hidden" name="character_id" value="{{.CharacterID}}">
-		<div class="form-group">
-			<label for="type">Select Item Type:</label>
-			<select name="type" id="type" required>
-				<option value="">-- Select Type --</option>
-				<option value="equipment">Equipment</option>
-				<option value="weapon">Weapon</option>
-				<option value="armor">Armor</option>
-				<option value="ammunition">Ammunition</option>
-				<option value="container">Container</option>
-				<option value="shield">Shield</option>
-				<option value="ranged_weapon">Ranged Weapon</option>
-			</select>
-		</div>
-		<div class="form-actions">
-			<button type="submit" class="button primary">Next</button>
-			<button type="button" class="button close-modal">Cancel</button>
-		</div>
-	</form>
-	{{else}}
-	<form hx-post="/characters/inventory/add-modal" hx-target="#character-sheet-container">
-		<input type="hidden" name="character_id" value="{{.CharacterID}}">
-		<input type="hidden" name="item_type" value="{{.SelectedType}}">
-
-		<div class="form-group">
-			<label for="item_id">Select Item:</label>
-			<select name="item_id" id="item_id" required>
-				<option value="">-- Select Item --</option>
-				{{range .Items}}
-				<option value="{{.ID}}">
-					{{.Name}} {{if .Weight}}({{.Weight}} lbs{{if .CostGp}} - {{.CostGp}} gp{{end}}){{end}}
-				</option>
-				{{end}}
-			</select>
-		</div>
-
-		<div class="form-group">
-			<label for="quantity">Quantity:</label>
-			<input type="number" name="quantity" id="quantity" value="1" min="1" required>
-		</div>
-
-		{{if .Containers}}
-		<div class="form-group">
-			<label for="container_id">Store in Container (optional):</label>
-			<select name="container_id" id="container_id">
-				<option value="">-- None --</option>
-				{{range .Containers}}
-				<option value="{{.ID}}">{{.ItemName}}</option>
-				{{end}}
-			</select>
-		</div>
-		{{end}}
-
-		{{if .ShowEquipmentSlots}}
-		<div class="form-group">
-			<label for="equipment_slot_id">Equipment Slot (optional):</label>
-			<select name="equipment_slot_id" id="equipment_slot_id">
-				<option value="">-- None --</option>
-				{{range .EquipmentSlots}}
-				<option value="{{.ID}}">{{.Name}}</option>
-				{{end}}
-			</select>
-		</div>
-		{{end}}
-
-		<div class="form-group">
-			<label for="notes">Notes (optional):</label>
-			<textarea name="notes" id="notes" rows="3"></textarea>
-		</div>
-
-		<div class="form-actions">
-			<button type="submit" class="button primary">
-				Add Item
-				<span class="htmx-indicator">
-					<div class="spinner"></div>
-				</span>
-			</button>
-			{{if .HasContainerID}}
-			<button type="button"
-				hx-get="/characters/inventory/modal?character_id={{.CharacterID}}&container_id={{.ContainerID.Int64}}"
-				hx-target="#add-item-form-container" class="button">Back</button>
-			{{else}}
-			<button type="button" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
-				hx-target="#add-item-form-container" class="button">Back</button>
-			{{end}}
-			<button type="button" class="button close-modal">Cancel</button>
-		</div>
-	</form>
-	{{end}}
-	`)
+    {{if not .SelectedType}}
+    <form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}">
+        <div class="form-group">
+            <label for="type">Select Item Type:</label>
+            <select name="type" id="type" required>
+                <option value="">-- Select Type --</option>
+                <option value="equipment">Equipment</option>
+                <option value="weapon">Weapon</option>
+                <option value="armor">Armor</option>
+                <option value="ammunition">Ammunition</option>
+                <option value="container">Container</option>
+                <option value="shield">Shield</option>
+                <option value="ranged_weapon">Ranged Weapon</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="button primary">Next</button>
+            <button type="button" class="button close-modal">Cancel</button>
+        </div>
+    </form>
+    {{else if and (or (eq .SelectedType "weapon") (eq .SelectedType "armor") (eq .SelectedType "shield") (eq .SelectedType "ranged_weapon")) (eq .Enhancement 0)}}
+    <!-- Enhancement selection form -->
+    <form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}">
+        <input type="hidden" name="type" value="{{.SelectedType}}">
+        <input type="hidden" name="step" value="enhancement">
+        {{if .HasContainerID}}
+        <input type="hidden" name="container_id" value="{{.ContainerID.Int64}}">
+        {{end}}
+        
+        <div class="form-group">
+            <label for="enhancement">Enhancement Bonus:</label>
+            <select name="enhancement" id="enhancement" required>
+                <option value="0">No Enhancement (+0)</option>
+                <option value="1">Enhanced (+1)</option>
+                <option value="2">Enhanced (+2)</option>
+                <option value="3">Enhanced (+3)</option>
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="button primary">Next</button>
+            <button type="button" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
+                hx-target="#add-item-form-container" class="button">Back</button>
+            <button type="button" class="button close-modal">Cancel</button>
+        </div>
+    </form>
+    {{else}}
+    <form hx-post="/characters/inventory/add-modal" hx-target="#character-sheet-container">
+        <input type="hidden" name="character_id" value="{{.CharacterID}}">
+        <input type="hidden" name="item_type" value="{{.SelectedType}}">
+        <input type="hidden" name="enhancement" value="{{.Enhancement}}">
+        {{if .HasContainerID}}
+        <input type="hidden" name="container_id" value="{{.ContainerID.Int64}}">
+        {{end}}
+ 
+        <div class="form-group">
+            <label for="item_id">Select Item:</label>
+            <select name="item_id" id="item_id" required>
+                <option value="">-- Select Item --</option>
+                {{range .Items}}
+                <option value="{{.ID}}">
+                    {{.Name}} {{if gt .Weight 0}}({{.Weight}} lbs){{end}} {{if gt .CostGp 0}}({{.CostGp}} gp){{end}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+ 
+        <div class="form-group">
+            <label for="quantity">Quantity:</label>
+            <input type="number" name="quantity" id="quantity" value="1" min="1" required>
+        </div>
+ 
+        {{if .Containers}}
+        <div class="form-group">
+            <label for="container_id">Store in Container (optional):</label>
+            <select name="container_id" id="container_id">
+                <option value="">-- None --</option>
+                {{range .Containers}}
+                <option value="{{.ID}}">{{.ItemName}}</option>
+                {{end}}
+            </select>
+        </div>
+        {{end}}
+ 
+        {{if .ShowEquipmentSlots}}
+        <div class="form-group">
+            <label for="equipment_slot_id">Equipment Slot (optional):</label>
+            <select name="equipment_slot_id" id="equipment_slot_id">
+                <option value="">-- None --</option>
+                {{range .EquipmentSlots}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+        {{end}}
+ 
+        <div class="form-group">
+            <label for="notes">Notes (optional):</label>
+            <textarea name="notes" id="notes" rows="3"></textarea>
+        </div>
+ 
+        <div class="form-actions">
+            <button type="submit" class="button primary">
+                Add Item
+                <span class="htmx-indicator">
+                    <div class="spinner"></div>
+                </span>
+            </button>
+            {{if .HasContainerID}}
+            <button type="button"
+                hx-get="/characters/inventory/modal?character_id={{.CharacterID}}&container_id={{.ContainerID.Int64}}"
+                hx-target="#add-item-form-container" class="button">Back</button>
+            {{else}}
+            <button type="button" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
+                hx-target="#add-item-form-container" class="button">Back</button>
+            {{end}}
+            <button type="button" class="button close-modal">Cancel</button>
+        </div>
+    </form>
+    {{end}}
+    `)
 
 	if err != nil {
 		logger.Error("Template parsing error", zap.Error(err))
@@ -1106,6 +1269,61 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 
 	if err := tmpl.Execute(w, data); err != nil {
 		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// Helper function to render just the enhancement selection form
+func renderEnhancementSelectionForm(w http.ResponseWriter, characterID int64, itemType string, containerID sql.NullInt64) {
+	tmpl, err := template.New("enhancement_form").Parse(`
+	<form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
+		<input type="hidden" name="character_id" value="{{.CharacterID}}">
+		<input type="hidden" name="type" value="{{.ItemType}}">
+		<input type="hidden" name="step" value="enhancement">
+		{{if .HasContainerID}}
+		<input type="hidden" name="container_id" value="{{.ContainerID}}">
+		{{end}}
+		
+		<div class="form-group">
+			<label for="enhancement">Enhancement Bonus:</label>
+			<select name="enhancement" id="enhancement" required>
+				<option value="0">No Enhancement (+0)</option>
+				<option value="1">Enhanced (+1)</option>
+				<option value="2">Enhanced (+2)</option>
+				<option value="3">Enhanced (+3)</option>
+			</select>
+		</div>
+		
+		<div class="form-actions">
+			<button type="submit" class="button primary">Next</button>
+			<button type="button" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
+				hx-target="#add-item-form-container" class="button">Back</button>
+			<button type="button" class="button close-modal">Cancel</button>
+		</div>
+	</form>
+	`)
+
+	if err != nil {
+		logger.Error("Enhancement form template parsing error", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		CharacterID    int64
+		ItemType       string
+		HasContainerID bool
+		ContainerID    int64
+	}{
+		CharacterID:    characterID,
+		ItemType:       itemType,
+		HasContainerID: containerID.Valid,
+		ContainerID:    containerID.Int64,
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		logger.Error("Enhancement form template execution error", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -1150,8 +1368,15 @@ func (s *Server) HandleAddItemModal(w http.ResponseWriter, r *http.Request) {
 	itemID, err := strconv.ParseInt(r.FormValue("item_id"), 10, 64)
 	if err != nil {
 		logger.Error("Invalid item ID", zap.Error(err))
-		renderCharacterWithMessage(s, w, r, character, "Invalid item ID")
+		http.Error(w, "Invalid item ID", http.StatusBadRequest)
 		return
+	}
+
+	// Parse enhancement
+	enhancementStr := r.FormValue("enhancement")
+	var enhancement int64
+	if enhancementStr != "" {
+		enhancement, _ = strconv.ParseInt(enhancementStr, 10, 64)
 	}
 
 	// Parse quantity (default to 1)
@@ -1196,6 +1421,19 @@ func (s *Server) HandleAddItemModal(w http.ResponseWriter, r *http.Request) {
 		notes = sql.NullString{String: notesStr, Valid: true}
 	}
 
+	// Add a note about enhancement if applicable
+	if enhancement > 0 && notes.String == "" {
+		notes = sql.NullString{
+			String: fmt.Sprintf("+%d enhancement", enhancement),
+			Valid:  true,
+		}
+	} else if enhancement > 0 {
+		notes = sql.NullString{
+			String: fmt.Sprintf("%s (+%d enhancement)", notes.String, enhancement),
+			Valid:  true,
+		}
+	}
+
 	// Add item to inventory
 	_, err = queries.AddItemToInventory(r.Context(), db.AddItemToInventoryParams{
 		CharacterID:     characterID,
@@ -1221,10 +1459,8 @@ func (s *Server) HandleAddItemModal(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Item added to inventory successfully via modal",
 		zap.Int64("character_id", characterID),
 		zap.Int64("item_id", itemID),
-		zap.String("item_type", itemType))
-
-	// Reset the modal display in addition to updating the character sheet
-	w.Header().Add("HX-Trigger", `{"modalClosed": true}`)
+		zap.String("item_type", itemType),
+		zap.Int64("enhancement", enhancement))
 
 	// Render character sheet with success message
 	renderCharacterWithMessage(s, w, r, character, "Item added successfully")
