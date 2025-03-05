@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/currency"
@@ -1113,18 +1114,151 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	// Add a special message if we had inventory issues but are still rendering
-	if len(inventory) == 0 && count > 0 {
-		data.FlashMessage = "There was an issue loading some inventory items. Please contact support if this persists."
+	// Updated template parsing
+	tmpl, err := template.New("base.html").Funcs(template.FuncMap{
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+		"seq": func(start, end int) []int {
+			s := make([]int, end-start+1)
+			for i := range s {
+				s[i] = start + i
+			}
+			return s
+		},
+		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
+		"add": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v + int64(w)
+				case int64:
+					return v + w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) + w
+				case int:
+					return int64(v + w)
+				}
+			}
+			return 0
+		},
+		"mul": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v * int64(w)
+				case int64:
+					return v * w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) * w
+				case int:
+					return int64(v * w)
+				}
+			}
+			return 0
+		},
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"sub": func(a, b interface{}) int64 {
+			switch v := a.(type) {
+			case int64:
+				switch w := b.(type) {
+				case int:
+					return v - int64(w)
+				case int64:
+					return v - w
+				}
+			case int:
+				switch w := b.(type) {
+				case int64:
+					return int64(v) - w
+				case int:
+					return int64(v - w)
+				}
+			}
+			return 0
+		},
+		"abs": func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		},
+		"formatDateTime": func(t time.Time) string {
+			return t.Format("January 2, 2006 3:04 PM")
+		},
+		"eq": func(a, b interface{}) bool {
+			return a == b
+		},
+		"formatModifier": func(mod int) string {
+			if mod > 0 {
+				return "+" + strconv.Itoa(mod)
+			}
+			return strconv.Itoa(mod)
+		},
+		"percentage": func(current, total int64) int {
+			if total == 0 {
+				return 100
+			}
+
+			// Make sure we don't exceed 100%
+			if current >= total {
+				return 100
+			}
+
+			return int((float64(current) / float64(total)) * 100)
+		},
+		"contains": containsString,
+	}).ParseFiles(
+		"templates/layout/base.html",
+		"templates/characters/details.html",
+		"templates/characters/_character_header.html",
+		"templates/characters/_inventory.html",
+		"templates/characters/_ability_scores.html",
+		"templates/characters/_class_features.html",
+		"templates/characters/_combat_stats.html",
+		"templates/characters/_saving_throws.html",
+		"templates/characters/_hp_display.html",
+		"templates/characters/_hp_section.html",
+		"templates/characters/_currency_section.html",
+		"templates/characters/_xp_section.html", // Make sure this is included
+		"templates/characters/inventory_modal.html",
+		"templates/characters/_container.html",
+	)
+	if err != nil {
+		logger.Error("Template parsing error", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
-	// Use the helper function to render the template
-	RenderTemplate(w, "templates/characters/details.html", "base.html", data)
-
-	logger.Info("Character detail rendered successfully",
-		zap.Int64("character_id", characterID),
-		zap.Int64("user_id", user.UserID),
-		zap.Int("inventory_count", len(inventory)))
+	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
+		logger.Error("Template execution error", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) HandleHPForm(w http.ResponseWriter, r *http.Request) {

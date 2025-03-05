@@ -1,0 +1,134 @@
+{{define "_xp_section"}}
+<div id="xp-section" class="xp-section">
+    <h2>Experience Points</h2>
+
+    <div class="xp-details">
+        <div class="xp-stats">
+            <div class="xp-current">
+                <span class="label">Current XP:</span>
+                <span class="value">{{.Character.ExperiencePoints}}</span>
+            </div>
+
+            {{if gt .Character.XPNeeded 0}}
+            <div class="xp-next-level">
+                <span class="label">Next Level:</span>
+                <span class="value">{{.Character.NextLevelXP}}</span>
+                <span class="xp-needed">({{.Character.XPNeeded}} XP needed)</span>
+            </div>
+            {{else}}
+            <div class="xp-max-level">
+                <span class="label">Maximum level reached</span>
+            </div>
+            {{end}}
+        </div>
+
+        {{if gt .Character.XPNeeded 0}}
+        <div class="xp-progress-container">
+            <div class="xp-progress-bar"
+                style="width: {{percentage .Character.ExperiencePoints .Character.NextLevelXP}}%"></div>
+            <div class="xp-progress-text">{{percentage .Character.ExperiencePoints .Character.NextLevelXP}}%</div>
+        </div>
+        {{end}}
+    </div>
+
+    <button class="toggle-button" id="toggle-xp-form">Update XP</button>
+
+    <div id="xp-form-container" style="display: none;">
+        <form hx-post="/characters/xp/update" hx-target="#xp-section" hx-swap="outerHTML" class="xp-form">
+            <input type="hidden" name="character_id" value="{{.Character.ID}}" />
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="xp_change">Modify XP:</label>
+                    <input type="number" id="xp_change" name="xp_change" required />
+                    <p class="help-text">
+                        Use positive to add, negative to subtract
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="calculate_bonus">Calculate Bonus XP:</label>
+                    <select id="calculate_bonus" name="calculate_bonus">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                    <p class="help-text">
+                        Apply ability score XP bonuses
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="button primary">
+                    Update XP
+                    <span class="htmx-indicator">
+                        <div class="spinner"></div>
+                    </span>
+                </button>
+                <button type="button" class="button" id="cancel-xp-form">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Message area for feedback -->
+    {{if .Message}}
+    <div class="xp-message {{if contains .Message " Error"}}error{{else}}success{{end}}">
+        {{.Message}}
+    </div>
+    {{end}}
+
+    <script>
+        // Function to setup event listeners for XP form toggles
+        function setupXPFormListeners() {
+            const toggleButton = document.getElementById('toggle-xp-form');
+            const formContainer = document.getElementById('xp-form-container');
+            const cancelButton = document.getElementById('cancel-xp-form');
+
+            if (toggleButton && formContainer && cancelButton) {
+                // Remove existing listeners to prevent duplicates
+                toggleButton.removeEventListener('click', toggleXPForm);
+                cancelButton.removeEventListener('click', hideXPForm);
+
+                // Add listeners
+                toggleButton.addEventListener('click', toggleXPForm);
+                cancelButton.addEventListener('click', hideXPForm);
+            }
+        }
+
+        // Toggle function
+        function toggleXPForm() {
+            const formContainer = document.getElementById('xp-form-container');
+            const toggleButton = document.getElementById('toggle-xp-form');
+
+            if (formContainer && toggleButton) {
+                const isVisible = formContainer.style.display !== 'none';
+                formContainer.style.display = isVisible ? 'none' : 'block';
+                toggleButton.textContent = isVisible ? 'Update XP' : 'Hide';
+            }
+        }
+
+        // Hide function
+        function hideXPForm() {
+            const formContainer = document.getElementById('xp-form-container');
+            const toggleButton = document.getElementById('toggle-xp-form');
+
+            if (formContainer && toggleButton) {
+                formContainer.style.display = 'none';
+                toggleButton.textContent = 'Update XP';
+            }
+        }
+
+        // Setup listeners when DOM is ready
+        document.addEventListener('DOMContentLoaded', setupXPFormListeners);
+
+        // Re-setup listeners after HTMX swaps content
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail.target.id === 'xp-section') {
+                setupXPFormListeners();
+            }
+        });
+    </script>
+</div>
+{{end}}

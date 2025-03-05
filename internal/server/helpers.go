@@ -121,6 +121,18 @@ func RenderTemplate(w http.ResponseWriter, templatePath string, templateName str
 			}
 			return strconv.Itoa(mod)
 		},
+		"percentage": func(current, total int64) int {
+			if total == 0 {
+				return 100
+			}
+
+			// Make sure we don't exceed 100%
+			if current >= total {
+				return 100
+			}
+
+			return int((float64(current) / float64(total)) * 100)
+		},
 		"contains": containsString,
 	}
 
@@ -142,7 +154,9 @@ func RenderTemplate(w http.ResponseWriter, templatePath string, templateName str
 			"templates/characters/_hp_display.html",
 			"templates/characters/_hp_section.html",
 			"templates/characters/_currency_section.html",
+			"templates/characters/_xp_section.html", // Make sure this is included
 			"templates/characters/inventory_modal.html",
+			"templates/characters/_container.html",
 		)
 	} else if strings.HasSuffix(templatePath, "base.html") {
 		// For base templates, parse just the single file

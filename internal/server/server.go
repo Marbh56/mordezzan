@@ -48,6 +48,9 @@ func (s *Server) Routes() http.Handler {
 	// Currency routes (protected)
 	mux.Handle("/characters/currency/update", s.AuthMiddleware(http.HandlerFunc(s.HandleCurrencyUpdate)))
 
+	// XP management routes (protected)
+	mux.Handle("/characters/xp/update", s.AuthMiddleware(http.HandlerFunc(s.HandleXPUpdate)))
+
 	// Inventory management routes (protected)
 	mux.Handle("/characters/inventory/add", s.AuthMiddleware(http.HandlerFunc(s.HandleAddInventoryItem)))
 	mux.Handle("/characters/inventory/remove", s.AuthMiddleware(http.HandlerFunc(s.HandleRemoveInventoryItem)))

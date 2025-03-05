@@ -113,22 +113,36 @@ func GetClassProgression(className string) ClassProgression {
 
 // GetLevelForXP returns the level a character should be based on their XP
 func (c ClassProgression) GetLevelForXP(xp int64) int64 {
+	if len(c.Levels) == 0 {
+		return 1 // Default to level 1 if no levels defined
+	}
+
+	// Iterate from highest to lowest to find the level
 	for i := len(c.Levels) - 1; i >= 0; i-- {
 		if xp >= c.Levels[i].XPRequired {
 			return c.Levels[i].Level
 		}
 	}
+
+	// If XP is less than the first level's requirement, return level 1
 	return 1
 }
 
 // GetXPForNextLevel returns how much XP is needed for next level
 func (c ClassProgression) GetXPForNextLevel(currentXP int64) int64 {
+	if len(c.Levels) == 0 {
+		return 0 // Handle empty progression gracefully
+	}
+
+	// Find the next level's XP requirement
 	for _, level := range c.Levels {
 		if level.XPRequired > currentXP {
 			return level.XPRequired - currentXP
 		}
 	}
-	return 0 // Already at max level
+
+	// If we're at max level or beyond, return 0
+	return 0
 }
 
 // GetSavingThrow returns the saving throw value for a given level
