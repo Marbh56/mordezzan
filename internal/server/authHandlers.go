@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strconv"
-	"text/template"
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/db"
@@ -28,17 +27,6 @@ func (s *Server) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/auth/login.html",
-	)
-	if err != nil {
-		logger.Error("Failed to parse login template",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		IsAuthenticated bool
 		FlashMessage    string
@@ -49,13 +37,7 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		logger.Error("Failed to execute login template",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/auth/login.html", "base.html", data)
 }
 
 func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
@@ -189,13 +171,6 @@ func (s *Server) handleLoginSubmission(w http.ResponseWriter, r *http.Request) {
 
 // Helper function to render the login result partial template
 func (s *Server) renderLoginResult(w http.ResponseWriter, success bool, message string) {
-	tmpl, err := template.ParseFiles("templates/auth/_login_result.html")
-	if err != nil {
-		logger.Error("Failed to parse login result template", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		Success bool
 		Message string
@@ -204,12 +179,7 @@ func (s *Server) renderLoginResult(w http.ResponseWriter, success bool, message 
 		Message: message,
 	}
 
-	err = tmpl.ExecuteTemplate(w, "login_result", data)
-	if err != nil {
-		logger.Error("Failed to execute login result template", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/auth/_login_result.html", "login_result", data)
 }
 
 func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
@@ -224,18 +194,6 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/auth/registration.html",
-	)
-
-	if err != nil {
-		logger.Error("Failed to parse registration template",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		IsAuthenticated bool
 		FlashMessage    string
@@ -245,14 +203,7 @@ func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 		FlashMessage:    r.URL.Query().Get("error"),
 		CurrentYear:     time.Now().Year(),
 	}
-
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		logger.Error("Failed to execute registration template",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/auth/registration.html", "base.html", data)
 }
 
 func (s *Server) handleRegistrerSubmission(w http.ResponseWriter, r *http.Request) {
@@ -476,16 +427,6 @@ func (s *Server) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/auth/settings.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		IsAuthenticated bool
 		Username        string
@@ -500,11 +441,7 @@ func (s *Server) HandleSettings(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/auth/settings.html", "base.html", data)
 }
 
 func (s *Server) HandleUpdatePassword(w http.ResponseWriter, r *http.Request) {

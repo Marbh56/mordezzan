@@ -480,6 +480,18 @@ SELECT
         WHEN ci.item_type = 'armor' THEN a.movement_rate
         ELSE NULL
     END as movement_rate,
+    CASE 
+        WHEN ci.item_type = 'armor' THEN a.armor_class
+        ELSE NULL
+    END as armor_class,
+    CASE
+        WHEN ci.item_type = 'weapon' THEN w.enhancement_bonus
+        WHEN ci.item_type = 'armor' THEN a.enhancement_bonus
+        WHEN ci.item_type = 'shield' THEN s.enhancement_bonus
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.enhancement_bonus
+        WHEN ci.item_type = 'ammunition' THEN am.enhancement_bonus
+        ELSE NULL
+    END as enhancement_bonus,
     es.name as slot_name,
     CASE 
         WHEN ci.item_type = 'container' THEN c.capacity_weight
@@ -525,6 +537,8 @@ type GetCharacterInventoryItemsRow struct {
 	Damage            interface{}    `json:"damage"`
 	AttacksPerRound   interface{}    `json:"attacks_per_round"`
 	MovementRate      interface{}    `json:"movement_rate"`
+	ArmorClass        interface{}    `json:"armor_class"`
+	EnhancementBonus  interface{}    `json:"enhancement_bonus"`
 	SlotName          sql.NullString `json:"slot_name"`
 	ContainerCapacity interface{}    `json:"container_capacity"`
 	ContainerMaxItems interface{}    `json:"container_max_items"`
@@ -556,6 +570,8 @@ func (q *Queries) GetCharacterInventoryItems(ctx context.Context, characterID in
 			&i.Damage,
 			&i.AttacksPerRound,
 			&i.MovementRate,
+			&i.ArmorClass,
+			&i.EnhancementBonus,
 			&i.SlotName,
 			&i.ContainerCapacity,
 			&i.ContainerMaxItems,

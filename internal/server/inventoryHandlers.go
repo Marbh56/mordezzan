@@ -775,24 +775,7 @@ func handleAddItemForm(s *Server, w http.ResponseWriter, r *http.Request, charac
 				zap.String("item_type", itemType))
 		}
 	}
-
-	// Render template
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/inventory/add.html",
-	)
-
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/inventory/add.html", "base.html", data)
 }
 
 func handleAddItemSubmission(s *Server, w http.ResponseWriter, r *http.Request, character db.Character, queries *db.Queries) {
@@ -1135,8 +1118,8 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Create a template function to render a partial template
-	tmpl, err := template.New("_modal").Parse(`
+	// Create a template manually with string content instead of loading from file
+	templateContent := `
     {{if not .SelectedType}}
     <form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
         <input type="hidden" name="character_id" value="{{.CharacterID}}">
@@ -1259,8 +1242,9 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
         </div>
     </form>
     {{end}}
-    `)
+    `
 
+	tmpl, err := template.New("modal_form").Parse(templateContent)
 	if err != nil {
 		logger.Error("Template parsing error", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -1274,8 +1258,8 @@ func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Helper function to render just the enhancement selection form
 func renderEnhancementSelectionForm(w http.ResponseWriter, characterID int64, itemType string, containerID sql.NullInt64) {
+	// Create and parse the template directly from a string
 	tmpl, err := template.New("enhancement_form").Parse(`
 	<form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
 		<input type="hidden" name="character_id" value="{{.CharacterID}}">

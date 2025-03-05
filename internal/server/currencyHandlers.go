@@ -161,27 +161,24 @@ func (s *Server) HandleCurrencyUpdate(w http.ResponseWriter, r *http.Request) {
 	renderCurrencySectionUpdate(w, viewModel, message)
 }
 
-// Helper to render currency error response
 func renderCurrencyError(w http.ResponseWriter, errMsg string) {
 	w.Header().Set("HX-Retarget", "#currency-section")
 	w.Header().Set("HX-Reswap", "outerHTML")
 	w.WriteHeader(http.StatusBadRequest)
 
-	// We need to include both Error and Character fields to match the template structure
 	data := struct {
 		Error     string
-		Character CharacterViewModel // Empty struct for template compatibility
-		Message   string             // Empty string for template compatibility
+		Character CharacterViewModel
+		Message   string
 	}{
 		Error:     errMsg,
-		Character: CharacterViewModel{}, // Empty character model
+		Character: CharacterViewModel{},
 		Message:   "",
 	}
 
 	RenderTemplate(w, "templates/characters/_currency_section.html", "_currency_section", data)
 }
 
-// Helper to render updated currency section
 func renderCurrencySectionUpdate(w http.ResponseWriter, character CharacterViewModel, message string) {
 	data := struct {
 		Character CharacterViewModel

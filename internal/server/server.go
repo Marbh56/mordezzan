@@ -3,10 +3,6 @@ package server
 import (
 	"database/sql"
 	"net/http"
-	"text/template"
-
-	"github.com/marbh56/mordezzan/internal/logger"
-	"go.uber.org/zap"
 )
 
 // Server represents our HTTP server and its dependencies
@@ -74,20 +70,4 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/", s.AuthMiddleware(http.HandlerFunc(s.HandleHome)))
 
 	return mux
-}
-
-func RenderTemplate(w http.ResponseWriter, templatePath, templateName string, data interface{}) {
-	tmpl, err := template.ParseFiles(templatePath)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err), zap.String("template", templatePath))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, templateName, data)
-	if err != nil {
-		logger.Error("Template execution error", zap.Error(err), zap.String("template", templatePath))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
 }

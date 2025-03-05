@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 	"strconv"
-	"text/template"
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/logger"
@@ -80,22 +79,7 @@ func (s *Server) HandleSpellList(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	// Render template
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/spells/list.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/spells/list.html", "base.html", data)
 }
 
 // HandleSpellDetail shows details of a specific spell
@@ -151,22 +135,7 @@ func (s *Server) HandleSpellDetail(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	// Render template
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/spells/detail.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/spells/detail.html", "base.html", data)
 }
 
 // HandleSpellCreate handles the creation of a new spell
@@ -243,21 +212,7 @@ func (s *Server) HandleSpellCreate(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/spells/create.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/spells/create.html", "base.html", data)
 }
 
 // HandleSpellEdit handles editing an existing spell
@@ -366,21 +321,7 @@ func (s *Server) HandleSpellEdit(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/spells/edit.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/spells/edit.html", "base.html", data)
 }
 
 // HandleSpellDelete handles deleting a spell

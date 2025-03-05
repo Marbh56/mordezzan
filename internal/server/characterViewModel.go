@@ -48,18 +48,19 @@ type InventoryItem struct {
 	ItemName         string          `json:"item_name"`
 	ItemWeight       int             `json:"item_weight"`
 	Quantity         int64           `json:"quantity"`
-	ContainerID      sql.NullInt64   `json:"container_id"` // Changed from ContainerInventoryID for consistency
+	ContainerID      sql.NullInt64   `json:"container_id"`
 	EquipmentSlotID  sql.NullInt64   `json:"equipment_slot_id"`
 	SlotName         sql.NullString  `json:"slot_name"`
-	CustomName       sql.NullString  `json:"custom_name"`   // New field
-	CustomNotes      sql.NullString  `json:"custom_notes"`  // New field
-	IsIdentified     bool            `json:"is_identified"` // New field
-	Charges          sql.NullInt64   `json:"charges"`       // New field
-	Condition        string          `json:"condition"`     // New field
+	CustomName       sql.NullString  `json:"custom_name"`
+	CustomNotes      sql.NullString  `json:"custom_notes"`
+	IsIdentified     bool            `json:"is_identified"`
+	Charges          sql.NullInt64   `json:"charges"`
+	Condition        string          `json:"condition"`
 	Damage           sql.NullString  `json:"damage"`
 	AttacksPerRound  sql.NullString  `json:"attacks_per_round"`
 	MovementRate     sql.NullInt64   `json:"movement_rate"`
 	DefenseBonus     interface{}     `json:"defense_bonus"`
+	EnhancementBonus sql.NullInt64   `json:"enhancement_bonus,omitempty"`
 	Notes            sql.NullString  `json:"notes"`
 	ContainerOptions []InventoryItem `json:"container_options,omitempty"`
 	CreatedAt        time.Time       `json:"created_at"`

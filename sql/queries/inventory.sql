@@ -40,6 +40,18 @@ SELECT
         WHEN ci.item_type = 'armor' THEN a.movement_rate
         ELSE NULL
     END as movement_rate,
+    CASE 
+        WHEN ci.item_type = 'armor' THEN a.armor_class
+        ELSE NULL
+    END as armor_class,
+    CASE
+        WHEN ci.item_type = 'weapon' THEN w.enhancement_bonus
+        WHEN ci.item_type = 'armor' THEN a.enhancement_bonus
+        WHEN ci.item_type = 'shield' THEN s.enhancement_bonus
+        WHEN ci.item_type = 'ranged_weapon' THEN rw.enhancement_bonus
+        WHEN ci.item_type = 'ammunition' THEN am.enhancement_bonus
+        ELSE NULL
+    END as enhancement_bonus,
     es.name as slot_name,
     CASE 
         WHEN ci.item_type = 'container' THEN c.capacity_weight

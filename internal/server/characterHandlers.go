@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/marbh56/mordezzan/internal/currency"
@@ -52,13 +51,6 @@ func calculateTotalHP(baseHP, level, constitution int64) (int64, error) {
 
 // Helper to render updated currency section
 func renderCurrencySection(w http.ResponseWriter, character CharacterViewModel, message string) {
-	tmpl, err := template.ParseFiles("templates/characters/_currency_section.html")
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		Character CharacterViewModel
 		Message   string
@@ -67,12 +59,7 @@ func renderCurrencySection(w http.ResponseWriter, character CharacterViewModel, 
 		Message:   message,
 	}
 
-	err = tmpl.ExecuteTemplate(w, "_currency_section", data)
-	if err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/characters/_currency_section.html", "_currency_section", data)
 }
 
 func (s *Server) HandleRest(w http.ResponseWriter, r *http.Request) {
@@ -226,18 +213,6 @@ func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
 		zap.String("user_id", strconv.FormatInt(user.UserID, 10)),
 		zap.Int("character_count", len(characters)))
 
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/characters/list.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing failed",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		IsAuthenticated bool
 		Username        string
@@ -252,13 +227,7 @@ func (s *Server) HandleCharacterList(w http.ResponseWriter, r *http.Request) {
 		CurrentYear:     time.Now().Year(),
 	}
 
-	if err = tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution failed",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/characters/list.html", "base.html", data)
 
 	logger.Debug("Character list page rendered successfully",
 		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
@@ -288,18 +257,6 @@ func (s *Server) handleCharacterCreateForm(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/characters/create.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing failed",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		IsAuthenticated bool
 		Username        string
@@ -312,13 +269,7 @@ func (s *Server) handleCharacterCreateForm(w http.ResponseWriter, r *http.Reques
 		CurrentYear:     time.Now().Year(),
 	}
 
-	if err := tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-		logger.Error("Template execution failed",
-			zap.Error(err),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/characters/create.html", "base.html", data)
 
 	logger.Debug("Character creation form rendered",
 		zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
@@ -548,18 +499,6 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tmpl, err := template.ParseFiles(
-			"templates/layout/base.html",
-			"templates/characters/edit.html",
-		)
-		if err != nil {
-			logger.Error("Template parsing failed",
-				zap.Error(err),
-				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
 		data := struct {
 			IsAuthenticated bool
 			Username        string
@@ -573,18 +512,7 @@ func (s *Server) HandleCharacterEdit(w http.ResponseWriter, r *http.Request) {
 			FlashMessage:    r.URL.Query().Get("message"),
 			CurrentYear:     time.Now().Year(),
 		}
-
-		if err = tmpl.ExecuteTemplate(w, "base.html", data); err != nil {
-			logger.Error("Template execution failed",
-				zap.Error(err),
-				zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		logger.Debug("Character edit form rendered",
-			zap.Int64("character_id", characterID),
-			zap.String("user_id", strconv.FormatInt(user.UserID, 10)))
+		RenderTemplate(w, "templates/characters/edit.html", "base.html", data)
 
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
@@ -1022,20 +950,41 @@ func safeGetDefenseBonus(v interface{}) (int64, bool) {
 	return 0, false
 }
 
-// safeGetArmorClass safely extracts armor class from an item
 func safeGetArmorClass(item db.GetCharacterInventoryItemsRow) (int64, bool) {
-	// This is a placeholder - in your actual code you would need to
-	// determine how armor class is stored in your inventory items
-	// This might be a property directly on the item or derivable from other properties
-
-	// Example implementation:
 	if item.ItemType != "armor" {
 		return 0, false
 	}
 
-	// Try to find armor class in item properties
-	// This would depend on your data structure
-	return 7, true // Default value
+	// Extract the armor class from the item's ArmorClass field
+	if item.ArmorClass == nil {
+		return 9, true // Default to Leather armor AC
+	}
+
+	ac, ok := interfaceToInt64(item.ArmorClass)
+	if !ok {
+		return 9, true // Default to Leather armor AC
+	}
+
+	return ac, true
+}
+
+func safeGetEnhancementBonus(item db.GetCharacterInventoryItemsRow) (int64, bool) {
+	if item.EnhancementBonus == nil {
+		return 0, false
+	}
+
+	switch value := item.EnhancementBonus.(type) {
+	case int64:
+		return value, true
+	case int:
+		return int64(value), true
+	case float64:
+		return int64(value), true
+	case sql.NullInt64:
+		return value.Int64, value.Valid
+	}
+
+	return 0, false
 }
 
 func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
@@ -1149,137 +1098,7 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	funcMap := template.FuncMap{
-		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("invalid dict call")
-			}
-			dict := make(map[string]interface{}, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					return nil, fmt.Errorf("dict keys must be strings")
-				}
-				dict[key] = values[i+1]
-			}
-			return dict, nil
-		},
-		"seq": func(start, end int) []int {
-			s := make([]int, end-start+1)
-			for i := range s {
-				s[i] = start + i
-			}
-			return s
-		},
-		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
-		"add": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v + int64(w)
-				case int64:
-					return v + w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) + w
-				case int:
-					return int64(v + w)
-				}
-			}
-			return 0
-		},
-		"mul": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v * int64(w)
-				case int64:
-					return v * w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) * w
-				case int:
-					return int64(v * w)
-				}
-			}
-			return 0
-		},
-		"div": func(a, b float64) float64 {
-			if b == 0 {
-				return 0
-			}
-			return a / b
-		},
-		"sub": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v - int64(w)
-				case int64:
-					return v - w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) - w
-				case int:
-					return int64(v - w)
-				}
-			}
-			return 0
-		},
-		"abs": func(x int) int {
-			if x < 0 {
-				return -x
-			}
-			return x
-		},
-		"formatDateTime": func(t time.Time) string {
-			return t.Format("January 2, 2006 3:04 PM")
-		},
-		"eq": func(a, b interface{}) bool {
-			return a == b
-		},
-		"formatModifier": func(mod int) string {
-			if mod > 0 {
-				return "+" + strconv.Itoa(mod)
-			}
-			return strconv.Itoa(mod)
-		},
-		"contains": containsString,
-	}
-
-	// Try to parse templates with error handling
-	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
-		"templates/layout/base.html",
-		"templates/characters/details.html",
-		"templates/characters/_inventory.html",
-		"templates/characters/_ability_scores.html",
-		"templates/characters/_class_features.html",
-		"templates/characters/_combat_stats.html",
-		"templates/characters/_saving_throws.html",
-		"templates/characters/_character_header.html",
-		"templates/characters/_currency_management.html",
-		"templates/characters/_hp_display.html",
-		"templates/characters/_hp_section.html",
-		"templates/characters/_currency_section.html",
-		"templates/characters/inventory_modal.html",
-	)
-
-	if err != nil {
-		logger.Error("Template parsing error",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error: Template parsing failed", http.StatusInternalServerError)
-		return
-	}
-
+	// Prepare data for the template
 	data := struct {
 		IsAuthenticated bool
 		Username        string
@@ -1299,13 +1118,8 @@ func (s *Server) HandleCharacterDetail(w http.ResponseWriter, r *http.Request) {
 		data.FlashMessage = "There was an issue loading some inventory items. Please contact support if this persists."
 	}
 
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		logger.Error("Template execution error",
-			zap.Error(err))
-		http.Error(w, "Internal Server Error: Template execution failed", http.StatusInternalServerError)
-		return
-	}
+	// Use the helper function to render the template
+	RenderTemplate(w, "templates/characters/details.html", "base.html", data)
 
 	logger.Info("Character detail rendered successfully",
 		zap.Int64("character_id", characterID),
@@ -1339,23 +1153,10 @@ func (s *Server) HandleHPForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Render the HP update form template
-	tmpl, err := template.ParseFiles("templates/characters/_hp_update_form.html")
-	if err != nil {
-		logger.Error("Template error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, "hp_update_form", character)
-	if err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	// Use the renderer helper function
+	RenderTemplate(w, "templates/characters/_hp_update_form.html", "hp_update_form", character)
 }
 
-// HandleMaxHPForm renders the form to update maximum HP
 func (s *Server) HandleMaxHPForm(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
@@ -1370,7 +1171,6 @@ func (s *Server) HandleMaxHPForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get character from database to verify ownership
 	queries := db.New(s.db)
 	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
 		ID:     characterID,
@@ -1381,26 +1181,10 @@ func (s *Server) HandleMaxHPForm(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Character not found", http.StatusNotFound)
 		return
 	}
-
-	// Render the Max HP update form template
-	tmpl, err := template.ParseFiles("templates/characters/_maxhp_update_form.html")
-	if err != nil {
-		logger.Error("Template error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = tmpl.ExecuteTemplate(w, "maxhp_update_form", character)
-	if err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/characters/_maxhp_update_form.html", "maxhp_update_form", character)
 }
 
-// HandleHPCancel clears the form container
 func (s *Server) HandleHPCancel(w http.ResponseWriter, r *http.Request) {
-	// Just return an empty response to clear the form container
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -1497,32 +1281,17 @@ func (s *Server) HandleUpdateHP(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderHPSection(w http.ResponseWriter, character db.Character, message string) {
-	tmpl, err := template.ParseFiles(
-		"templates/characters/_hp_display.html",
-		"templates/characters/_hp_section.html",
-	)
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	data := struct {
 		Character    db.Character
 		Message      string
-		FlashMessage string // Add this field to match what the template expects
+		FlashMessage string
 	}{
 		Character:    character,
 		Message:      message,
-		FlashMessage: message, // Set FlashMessage to the message value
+		FlashMessage: message,
 	}
 
-	err = tmpl.ExecuteTemplate(w, "hp_display_section", data)
-	if err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/characters/_hp_section.html", "hp_display_section", data)
 }
 
 // Modified function to handle updating maximum HP
@@ -1619,175 +1388,4 @@ func (s *Server) HandleUpdateMaxHP(w http.ResponseWriter, r *http.Request) {
 
 	message := fmt.Sprintf("Maximum HP changed by %+d", maxHPChange)
 	renderHPSection(w, updatedCharacter, message)
-}
-
-func (s *Server) renderCharacterDetail(w http.ResponseWriter, r *http.Request, user *db.GetSessionRow, character db.Character, viewModel CharacterViewModel) error {
-	funcMap := template.FuncMap{
-		"seq": func(start, end int) []int {
-			s := make([]int, end-start+1)
-			for i := range s {
-				s[i] = start + i
-			}
-			return s
-		},
-		"GetSavingThrowModifiers": charRules.GetSavingThrowModifiers,
-		"add": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v + int64(w)
-				case int64:
-					return v + w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) + w
-				case int:
-					return int64(v + w)
-				}
-			}
-			return 0
-		},
-		"mul": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v * int64(w)
-				case int64:
-					return v * w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) * w
-				case int:
-					return int64(v * w)
-				}
-			}
-			return 0
-		},
-		"div": func(a, b float64) float64 {
-			if b == 0 {
-				return 0
-			}
-			return a / b
-		},
-		"sub": func(a, b interface{}) int64 {
-			switch v := a.(type) {
-			case int64:
-				switch w := b.(type) {
-				case int:
-					return v - int64(w)
-				case int64:
-					return v - w
-				}
-			case int:
-				switch w := b.(type) {
-				case int64:
-					return int64(v) - w
-				case int:
-					return int64(v - w)
-				}
-			}
-			return 0
-		},
-		"abs": func(x int) int {
-			if x < 0 {
-				return -x
-			}
-			return x
-		},
-		"formatDateTime": func(t time.Time) string {
-			return t.Format("January 2, 2006 3:04 PM")
-		},
-		"eq": func(a, b interface{}) bool {
-			return a == b
-		},
-		"formatModifier": func(mod int) string {
-			if mod > 0 {
-				return "+" + strconv.Itoa(mod)
-			}
-			return strconv.Itoa(mod)
-		},
-		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("invalid dict call")
-			}
-			dict := make(map[string]interface{}, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					return nil, fmt.Errorf("dict keys must be strings")
-				}
-				dict[key] = values[i+1]
-			}
-			return dict, nil
-		},
-		"contains": containsString,
-	}
-
-	// Parse templates - make sure to include the inventory_modal.html template
-	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFiles(
-		"templates/layout/base.html",
-		"templates/characters/details.html",
-		"templates/characters/_inventory.html",
-		"templates/characters/_ability_scores.html",
-		"templates/characters/_class_features.html",
-		"templates/characters/_combat_stats.html",
-		"templates/characters/_saving_throws.html",
-		"templates/characters/_character_header.html",
-		"templates/characters/_currency_management.html",
-		"templates/characters/_hp_display.html",
-		"templates/characters/_hp_section.html",
-		"templates/characters/_currency_section.html",
-		"templates/characters/inventory_modal.html", // Add this line to include the inventory modal template
-	)
-
-	if err != nil {
-		logger.Error("Template parsing error", zap.Error(err))
-		return err
-	}
-
-	data := struct {
-		IsAuthenticated bool
-		Username        string
-		Character       CharacterViewModel
-		FlashMessage    string
-		Message         string // Add this field for backward compatibility
-		CurrentYear     int
-	}{
-		IsAuthenticated: true,
-		Username:        user.Username,
-		Character:       viewModel,
-		FlashMessage:    r.URL.Query().Get("message"),
-		Message:         r.URL.Query().Get("message"), // Set to the same value as FlashMessage
-		CurrentYear:     time.Now().Year(),
-	}
-
-	// Add a special message if we had inventory issues but are still rendering
-	if count, err := getCharacterInventoryCount(s.db, character.ID); err == nil && count > 0 && len(viewModel.CarriedItems) == 0 {
-		data.FlashMessage = "There was an issue loading some inventory items. Please contact support if this persists."
-	}
-
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		logger.Error("Template execution error", zap.Error(err))
-		return err
-	}
-
-	logger.Info("Character detail rendered successfully",
-		zap.Int64("character_id", character.ID),
-		zap.Int64("user_id", user.UserID))
-
-	return nil
-}
-
-// Helper function to get inventory count for a character
-func getCharacterInventoryCount(db *sql.DB, characterID int64) (int, error) {
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM character_inventory WHERE character_id = ?", characterID).Scan(&count)
-	return count, err
 }

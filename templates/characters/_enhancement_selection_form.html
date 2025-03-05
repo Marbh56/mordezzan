@@ -1,0 +1,27 @@
+{{define "enhancement_selection_form"}}
+<form hx-get="/characters/inventory/modal" hx-target="#add-item-form-container">
+    <input type="hidden" name="character_id" value="{{.CharacterID}}">
+    <input type="hidden" name="type" value="{{.ItemType}}">
+    <input type="hidden" name="step" value="enhancement">
+    {{if .HasContainerID}}
+    <input type="hidden" name="container_id" value="{{.ContainerID}}">
+    {{end}}
+
+    <div class="form-group">
+        <label for="enhancement">Enhancement Bonus:</label>
+        <select name="enhancement" id="enhancement" required>
+            <option value="0">No Enhancement (+0)</option>
+            <option value="1">Enhanced (+1)</option>
+            <option value="2">Enhanced (+2)</option>
+            <option value="3">Enhanced (+3)</option>
+        </select>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="button primary">Next</button>
+        <button type="button" hx-get="/characters/inventory/modal?character_id={{.CharacterID}}"
+            hx-target="#add-item-form-container" class="button">Back</button>
+        <button type="button" class="button close-modal">Cancel</button>
+    </div>
+</form>
+{{end}}

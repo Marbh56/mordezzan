@@ -1,25 +1,13 @@
 package server
 
 import (
-	"log"
 	"net/http"
-	"text/template"
 	"time"
 )
 
 func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
-		return
-	}
-
-	tmpl, err := template.ParseFiles(
-		"templates/layout/base.html",
-		"templates/home.html",
-	)
-	if err != nil {
-		log.Printf("Template parsing error: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -42,11 +30,5 @@ func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 		FlashMessage:    r.URL.Query().Get("message"),
 		CurrentYear:     time.Now().Year(),
 	}
-
-	err = tmpl.ExecuteTemplate(w, "base.html", data)
-	if err != nil {
-		log.Printf("Template execution error: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	RenderTemplate(w, "templates/home.html", "base.html", data)
 }
