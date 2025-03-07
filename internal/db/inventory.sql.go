@@ -84,6 +84,82 @@ func (q *Queries) AddItemToInventory(ctx context.Context, arg AddItemToInventory
 	return i, err
 }
 
+const addMagicalItemToInventory = `-- name: AddMagicalItemToInventory :one
+INSERT INTO
+    character_inventory (
+        character_id,
+        item_id,
+        item_type,
+        quantity,
+        container_id,
+        equipment_slot_id,
+        charges,
+        notes
+    )
+VALUES
+    (?, ?, 'magical_item', 1, ?, ?, ?, ?) 
+RETURNING id,
+    character_id,
+    item_id,
+    item_type,
+    quantity,
+    container_id,
+    equipment_slot_id,
+    charges,
+    notes,
+    created_at,
+    updated_at
+`
+
+type AddMagicalItemToInventoryParams struct {
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Charges         sql.NullInt64  `json:"charges"`
+	Notes           sql.NullString `json:"notes"`
+}
+
+type AddMagicalItemToInventoryRow struct {
+	ID              int64          `json:"id"`
+	CharacterID     int64          `json:"character_id"`
+	ItemID          int64          `json:"item_id"`
+	ItemType        string         `json:"item_type"`
+	Quantity        int64          `json:"quantity"`
+	ContainerID     sql.NullInt64  `json:"container_id"`
+	EquipmentSlotID sql.NullInt64  `json:"equipment_slot_id"`
+	Charges         sql.NullInt64  `json:"charges"`
+	Notes           sql.NullString `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) AddMagicalItemToInventory(ctx context.Context, arg AddMagicalItemToInventoryParams) (AddMagicalItemToInventoryRow, error) {
+	row := q.db.QueryRowContext(ctx, addMagicalItemToInventory,
+		arg.CharacterID,
+		arg.ItemID,
+		arg.ContainerID,
+		arg.EquipmentSlotID,
+		arg.Charges,
+		arg.Notes,
+	)
+	var i AddMagicalItemToInventoryRow
+	err := row.Scan(
+		&i.ID,
+		&i.CharacterID,
+		&i.ItemID,
+		&i.ItemType,
+		&i.Quantity,
+		&i.ContainerID,
+		&i.EquipmentSlotID,
+		&i.Charges,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const equipItem = `-- name: EquipItem :exec
 UPDATE character_inventory
 SET 
@@ -292,6 +368,58 @@ func (q *Queries) GetAllEquipment(ctx context.Context) ([]GetAllEquipmentRow, er
 			&i.Name,
 			&i.Weight,
 			&i.CostGp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllMagicalItems = `-- name: GetAllMagicalItems :many
+SELECT 
+    id, name, description, weight, cost_gp, max_charges, category, effect_description
+FROM 
+    magical_items
+ORDER BY 
+    name
+`
+
+type GetAllMagicalItemsRow struct {
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	Weight            int64  `json:"weight"`
+	CostGp            int64  `json:"cost_gp"`
+	MaxCharges        int64  `json:"max_charges"`
+	Category          string `json:"category"`
+	EffectDescription string `json:"effect_description"`
+}
+
+func (q *Queries) GetAllMagicalItems(ctx context.Context) ([]GetAllMagicalItemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllMagicalItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllMagicalItemsRow
+	for rows.Next() {
+		var i GetAllMagicalItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Weight,
+			&i.CostGp,
+			&i.MaxCharges,
+			&i.Category,
+			&i.EffectDescription,
 		); err != nil {
 			return nil, err
 		}
@@ -587,6 +715,50 @@ func (q *Queries) GetCharacterInventoryItems(ctx context.Context, characterID in
 		return nil, err
 	}
 	return items, nil
+}
+
+const getChargedItem = `-- name: GetChargedItem :one
+SELECT 
+    ci.id, ci.character_id, ci.charges, 
+    mi.name, mi.description, mi.effect_description, mi.category
+FROM 
+    character_inventory ci
+JOIN 
+    magical_items mi ON ci.item_id = mi.id
+WHERE 
+    ci.id = ?
+    AND ci.character_id = ?
+    AND ci.item_type = 'magical_item'
+`
+
+type GetChargedItemParams struct {
+	ID          int64 `json:"id"`
+	CharacterID int64 `json:"character_id"`
+}
+
+type GetChargedItemRow struct {
+	ID                int64         `json:"id"`
+	CharacterID       int64         `json:"character_id"`
+	Charges           sql.NullInt64 `json:"charges"`
+	Name              string        `json:"name"`
+	Description       string        `json:"description"`
+	EffectDescription string        `json:"effect_description"`
+	Category          string        `json:"category"`
+}
+
+func (q *Queries) GetChargedItem(ctx context.Context, arg GetChargedItemParams) (GetChargedItemRow, error) {
+	row := q.db.QueryRowContext(ctx, getChargedItem, arg.ID, arg.CharacterID)
+	var i GetChargedItemRow
+	err := row.Scan(
+		&i.ID,
+		&i.CharacterID,
+		&i.Charges,
+		&i.Name,
+		&i.Description,
+		&i.EffectDescription,
+		&i.Category,
+	)
+	return i, err
 }
 
 const getContainerCapacity = `-- name: GetContainerCapacity :one
@@ -1054,6 +1226,42 @@ func (q *Queries) GetEquippedItems(ctx context.Context, characterID int64) ([]Ge
 	return items, nil
 }
 
+const getMagicalItemByID = `-- name: GetMagicalItemByID :one
+SELECT 
+    id, name, description, weight, cost_gp, max_charges, category, effect_description
+FROM 
+    magical_items
+WHERE 
+    id = ?
+`
+
+type GetMagicalItemByIDRow struct {
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	Weight            int64  `json:"weight"`
+	CostGp            int64  `json:"cost_gp"`
+	MaxCharges        int64  `json:"max_charges"`
+	Category          string `json:"category"`
+	EffectDescription string `json:"effect_description"`
+}
+
+func (q *Queries) GetMagicalItemByID(ctx context.Context, id int64) (GetMagicalItemByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getMagicalItemByID, id)
+	var i GetMagicalItemByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Weight,
+		&i.CostGp,
+		&i.MaxCharges,
+		&i.Category,
+		&i.EffectDescription,
+	)
+	return i, err
+}
+
 const isSlotOccupied = `-- name: IsSlotOccupied :one
 SELECT 
     COUNT(*) > 0 as is_occupied
@@ -1265,5 +1473,25 @@ type UpdateItemQuantityParams struct {
 
 func (q *Queries) UpdateItemQuantity(ctx context.Context, arg UpdateItemQuantityParams) error {
 	_, err := q.db.ExecContext(ctx, updateItemQuantity, arg.Quantity, arg.ID, arg.CharacterID)
+	return err
+}
+
+const useChargedItem = `-- name: UseChargedItem :exec
+UPDATE character_inventory
+SET 
+    charges = charges - 1
+WHERE 
+    id = ?
+    AND character_id = ?
+    AND charges > 0
+`
+
+type UseChargedItemParams struct {
+	ID          int64 `json:"id"`
+	CharacterID int64 `json:"character_id"`
+}
+
+func (q *Queries) UseChargedItem(ctx context.Context, arg UseChargedItemParams) error {
+	_, err := q.db.ExecContext(ctx, useChargedItem, arg.ID, arg.CharacterID)
 	return err
 }

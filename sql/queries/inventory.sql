@@ -433,3 +433,77 @@ WHERE
     enhancement_bonus = ?
 ORDER BY 
     name;
+
+    -- name: UseChargedItem :exec
+UPDATE character_inventory
+SET 
+    charges = charges - 1
+WHERE 
+    id = ?
+    AND character_id = ?
+    AND charges > 0;
+
+-- name: GetChargedItem :one
+SELECT 
+    ci.id, ci.character_id, ci.charges, 
+    mi.name, mi.description, mi.effect_description, mi.category
+FROM 
+    character_inventory ci
+JOIN 
+    magical_items mi ON ci.item_id = mi.id
+WHERE 
+    ci.id = ?
+    AND ci.character_id = ?
+    AND ci.item_type = 'magical_item';
+
+-- name: UseChargedItem :exec
+UPDATE character_inventory
+SET 
+    charges = charges - 1
+WHERE 
+    id = ?
+    AND character_id = ?
+    AND charges > 0;
+
+
+-- name: GetAllMagicalItems :many
+SELECT 
+    id, name, description, weight, cost_gp, max_charges, category, effect_description
+FROM 
+    magical_items
+ORDER BY 
+    name;
+
+-- name: GetMagicalItemByID :one
+SELECT 
+    id, name, description, weight, cost_gp, max_charges, category, effect_description
+FROM 
+    magical_items
+WHERE 
+    id = ?;
+
+-- name: AddMagicalItemToInventory :one
+INSERT INTO
+    character_inventory (
+        character_id,
+        item_id,
+        item_type,
+        quantity,
+        container_id,
+        equipment_slot_id,
+        charges,
+        notes
+    )
+VALUES
+    (?, ?, 'magical_item', 1, ?, ?, ?, ?) 
+RETURNING id,
+    character_id,
+    item_id,
+    item_type,
+    quantity,
+    container_id,
+    equipment_slot_id,
+    charges,
+    notes,
+    created_at,
+    updated_at;

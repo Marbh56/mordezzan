@@ -1593,3 +1593,196 @@ func renderCharacterWithMessage(s *Server, w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
+
+func (s *Server) HandleAddMagicalItem(w http.ResponseWriter, r *http.Request) {
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		logger.Error("Unauthorized access attempt to magic item handler")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse character ID from query parameters
+	characterIDStr := r.URL.Query().Get("character_id")
+	characterID, err := strconv.ParseInt(characterIDStr, 10, 64)
+	if err != nil {
+		logger.Error("Invalid character ID", zap.Error(err), zap.String("raw_id", characterIDStr))
+		http.Error(w, "Invalid character ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify character belongs to user
+	queries := db.New(s.db)
+	character, err := queries.GetCharacter(r.Context(), db.GetCharacterParams{
+		ID:     characterID,
+		UserID: user.UserID,
+	})
+	if err != nil {
+		logger.Error("Character not found or belongs to another user",
+			zap.Error(err), zap.Int64("character_id", characterID))
+		http.Error(w, "Character not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if this is a form submission or the initial page load
+	if r.Method == http.MethodPost {
+		handleAddMagicalItemSubmission(s, w, r, character, queries)
+		return
+	}
+
+	// Initial page load - display form with available magical items
+	handleAddMagicalItemForm(s, w, r, character, queries)
+}
+
+func handleAddMagicalItemForm(s *Server, w http.ResponseWriter, r *http.Request, character db.Character, queries *db.Queries) {
+	// Get container ID if provided (for storing the magic item in a container)
+	var containerID sql.NullInt64
+	if containerIDStr := r.URL.Query().Get("container_id"); containerIDStr != "" {
+		id, err := strconv.ParseInt(containerIDStr, 10, 64)
+		if err == nil {
+			containerID = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
+
+	// Get all magical items
+	magicalItems, err := queries.GetAllMagicalItems(r.Context())
+	if err != nil {
+		logger.Error("Failed to fetch magical items",
+			zap.Error(err), zap.Int64("character_id", character.ID))
+		http.Error(w, "Error fetching magical items", http.StatusInternalServerError)
+		return
+	}
+
+	// Get available containers for the character
+	containers, err := queries.GetCharacterInventoryItems(r.Context(), character.ID)
+	if err != nil {
+		logger.Warn("Failed to fetch inventory",
+			zap.Error(err), zap.Int64("character_id", character.ID))
+		containers = []db.GetCharacterInventoryItemsRow{}
+	}
+
+	// Filter containers manually by type
+	var filteredContainers []db.GetCharacterInventoryItemsRow
+	for _, item := range containers {
+		if item.ItemType == "container" {
+			filteredContainers = append(filteredContainers, item)
+		}
+	}
+
+	// Get equipment slots
+	equipmentSlots, err := queries.GetEquipmentSlots(r.Context())
+	if err != nil {
+		logger.Warn("Failed to fetch equipment slots", zap.Error(err))
+	}
+
+	// Get user from context
+	user, _ := GetUserFromContext(r.Context())
+	var username string
+	if user != nil {
+		username = user.Username
+	}
+
+	// Prepare data for the template
+	data := struct {
+		IsAuthenticated bool
+		Username        string
+		CharacterID     int64
+		MagicalItems    []db.GetAllMagicalItemsRow
+		Containers      []db.GetCharacterInventoryItemsRow
+		EquipmentSlots  []db.EquipmentSlot
+		HasContainerID  bool
+		ContainerID     sql.NullInt64
+		FlashMessage    string
+		CurrentYear     int
+	}{
+		IsAuthenticated: true,
+		Username:        username,
+		CharacterID:     character.ID,
+		MagicalItems:    magicalItems,
+		Containers:      filteredContainers,
+		EquipmentSlots:  equipmentSlots,
+		HasContainerID:  containerID.Valid,
+		ContainerID:     containerID,
+		FlashMessage:    r.URL.Query().Get("message"),
+		CurrentYear:     time.Now().Year(),
+	}
+
+	RenderTemplate(w, "templates/inventory/add_magical_item.html", "base.html", data)
+}
+
+func handleAddMagicalItemSubmission(s *Server, w http.ResponseWriter, r *http.Request, character db.Character, queries *db.Queries) {
+	if err := r.ParseForm(); err != nil {
+		logger.Error("Failed to parse form", zap.Error(err))
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Parse form values
+	itemID, err := strconv.ParseInt(r.FormValue("item_id"), 10, 64)
+	if err != nil {
+		logger.Error("Invalid item ID", zap.Error(err), zap.String("raw_id", r.FormValue("item_id")))
+		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add-magical?character_id=%d&message=Invalid item ID", character.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Get the magical item to determine max charges
+	magicalItem, err := queries.GetMagicalItemByID(r.Context(), itemID)
+	if err != nil {
+		logger.Error("Failed to fetch magical item details",
+			zap.Error(err), zap.Int64("item_id", itemID))
+		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add-magical?character_id=%d&message=Error fetching magical item", character.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Set initial charges to max_charges
+	charges := magicalItem.MaxCharges
+
+	// Parse container ID if provided
+	var containerID sql.NullInt64
+	if containerIDStr := r.FormValue("container_id"); containerIDStr != "" {
+		id, err := strconv.ParseInt(containerIDStr, 10, 64)
+		if err == nil {
+			containerID = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
+
+	// Parse equipment slot ID if provided
+	var equipmentSlotID sql.NullInt64
+	if slotIDStr := r.FormValue("equipment_slot_id"); slotIDStr != "" {
+		id, err := strconv.ParseInt(slotIDStr, 10, 64)
+		if err == nil {
+			equipmentSlotID = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
+
+	// Parse notes if provided
+	var notes sql.NullString
+	if notesStr := r.FormValue("notes"); notesStr != "" {
+		notes = sql.NullString{String: notesStr, Valid: true}
+	}
+
+	// Add item to inventory with charges
+	_, err = queries.AddMagicalItemToInventory(r.Context(), db.AddMagicalItemToInventoryParams{
+		CharacterID:     character.ID,
+		ItemID:          itemID,
+		Charges:         sql.NullInt64{Int64: charges, Valid: true},
+		ContainerID:     containerID,
+		EquipmentSlotID: equipmentSlotID,
+		Notes:           notes,
+	})
+
+	if err != nil {
+		logger.Error("Failed to add magical item to inventory",
+			zap.Error(err),
+			zap.Int64("character_id", character.ID),
+			zap.Int64("item_id", itemID))
+		http.Redirect(w, r, fmt.Sprintf("/characters/inventory/add-magical?character_id=%d&message=Error adding magical item", character.ID), http.StatusSeeOther)
+		return
+	}
+
+	logger.Info("Magical item added to inventory successfully",
+		zap.Int64("character_id", character.ID),
+		zap.Int64("item_id", itemID))
+
+	http.Redirect(w, r, fmt.Sprintf("/characters/detail?id=%d&message=Magical item added successfully", character.ID), http.StatusSeeOther)
+}

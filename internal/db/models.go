@@ -141,6 +141,19 @@ type ItemTag struct {
 	Tag    string `json:"tag"`
 }
 
+type MagicalItem struct {
+	ID                int64        `json:"id"`
+	Name              string       `json:"name"`
+	Description       string       `json:"description"`
+	Weight            int64        `json:"weight"`
+	CostGp            int64        `json:"cost_gp"`
+	MaxCharges        int64        `json:"max_charges"`
+	Category          string       `json:"category"`
+	EffectDescription string       `json:"effect_description"`
+	CreatedAt         sql.NullTime `json:"created_at"`
+	UpdatedAt         sql.NullTime `json:"updated_at"`
+}
+
 type RangedWeapon struct {
 	ID               int64          `json:"id"`
 	Name             string         `json:"name"`

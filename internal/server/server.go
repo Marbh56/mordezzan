@@ -63,6 +63,9 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/characters/inventory/modal", s.AuthMiddleware(http.HandlerFunc(s.HandleInventoryModal)))
 	mux.Handle("/characters/inventory/add-modal", s.AuthMiddleware(http.HandlerFunc(s.HandleAddItemModal)))
 
+	// Use magical item routes (protected)
+	mux.Handle("/characters/item/use", s.AuthMiddleware(http.HandlerFunc(s.HandleUseMagicalItem)))
+
 	// User settings routes (protected)
 	mux.Handle("/settings", s.AuthMiddleware(http.HandlerFunc(s.HandleSettings)))
 	mux.Handle("/settings/update", s.AuthMiddleware(http.HandlerFunc(s.HandleUpdateUser)))
