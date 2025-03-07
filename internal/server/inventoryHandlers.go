@@ -879,54 +879,6 @@ func PrepareContainerOptionsForItems(items []InventoryItem, containers []Invento
 	return items
 }
 
-// EnhanceInventoryViewModel enhances the character view model with container options
-func EnhanceInventoryViewModel(viewModel *CharacterViewModel) {
-	// Find all containers
-	var containers []InventoryItem
-	for _, item := range viewModel.CarriedItems {
-		if item.ItemType == "container" {
-			containers = append(containers, item)
-		}
-	}
-
-	// Add container options to carried items
-	viewModel.CarriedItems = PrepareContainerOptionsForItems(viewModel.CarriedItems, containers)
-
-	// Add container options to each container's items
-	for containerID, containerItems := range viewModel.ContainerItems {
-		// Get all containers except the current one
-		var validContainers []InventoryItem
-		for _, container := range containers {
-			if container.ID != containerID {
-				validContainers = append(validContainers, container)
-			}
-		}
-		viewModel.ContainerItems[containerID] = PrepareContainerOptionsForItems(containerItems, validContainers)
-	}
-}
-
-// Helper function to get available equipment slots for an item
-func getAvailableSlotsForItem(itemType string) []db.EquipmentSlot {
-	// This would be better as a database query, but for now we'll hardcode
-	slots := make([]db.EquipmentSlot, 0)
-
-	switch itemType {
-	case "weapon", "ranged_weapon":
-		slots = append(slots, db.EquipmentSlot{ID: 5, Name: "Right Hand"})
-		slots = append(slots, db.EquipmentSlot{ID: 6, Name: "Left Hand"})
-	case "armor":
-		slots = append(slots, db.EquipmentSlot{ID: 3, Name: "Body"})
-	case "shield":
-		slots = append(slots, db.EquipmentSlot{ID: 6, Name: "Left Hand"})
-	case "headgear":
-		slots = append(slots, db.EquipmentSlot{ID: 1, Name: "Head"})
-	default:
-		// Add other slot mappings as needed
-	}
-
-	return slots
-}
-
 func (s *Server) HandleInventoryModal(w http.ResponseWriter, r *http.Request) {
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
